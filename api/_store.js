@@ -2,7 +2,7 @@
 // On Vercel the store is connected via BLOB_STORE_ID (secure OIDC access, no key to manage);
 // an older-style BLOB_READ_WRITE_TOKEN also works.
 import { createHash } from 'node:crypto';
-import { BlobPreconditionFailedError, del, get, put } from '@vercel/blob';
+import { BlobNotFoundError, BlobPreconditionFailedError, del, get, put } from '@vercel/blob';
 
 const FILE = 'reviews.json';
 
@@ -46,7 +46,7 @@ export async function deletePhoto(url, env) {
 // slightly out of date — read again and retry. This stops two quick taps from undoing each other.
 async function update(file, env, change) {
   for (let attempt = 0; attempt < 10; attempt++) {
-    const r = await get(file, { access: 'public', ...auth(env) });
+    const r = await get(file, { access: 'public', ...auth(env) }).catch((e) => { if (e instanceof BlobNotFoundError) return null; throw e; });
     const list = r && r.statusCode === 200 ? JSON.parse((await new Response(r.stream).text()) || '[]') : [];
     const next = change(Array.isArray(list) ? list : []);
     try {

@@ -32,7 +32,8 @@ export default function Order({ lines: first, name, setName, back, onSent }) {
         body: JSON.stringify({ items, total, name: name.trim(), phone: form.phone.trim(), address: form.address.trim(), notes: form.notes.trim() }),
       });
       if (!res.ok) throw new Error();
-      onSent({ name: name.trim(), phone: form.phone.trim(), item: lines[0].item, qty: count, total });
+      const out = await res.json().catch(() => ({}));
+      onSent({ name: name.trim(), phone: form.phone.trim(), item: lines[0].item, qty: count, total, no: out.no || null, lines });
     } catch {
       setStatus('error');
     }

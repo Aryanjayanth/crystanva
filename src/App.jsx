@@ -27,6 +27,9 @@ export default function App() {
   // cart (kept on this device) and the pieces being checked out
   const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem('crystanva-cart') || '[]'); } catch { return []; } });
   useEffect(() => { localStorage.setItem('crystanva-cart', JSON.stringify(cart)); }, [cart]);
+  const [history, setHistory] = useState(() => { try { return JSON.parse(localStorage.getItem('crystanva-orders') || '[]'); } catch { return []; } });
+  useEffect(() => { localStorage.setItem('crystanva-orders', JSON.stringify(history)); }, [history]);
+  const [editing, setEditing] = useState(null); // id of the cart line being edited in the builder
   const [lines, setLines] = useState([]);
   const [fromCart, setFromCart] = useState(false);
 
@@ -45,9 +48,16 @@ export default function App() {
   }, []);
 
   // personalized keychains start with the first letter of the visitor's name
-  const start = (categoryId) => { setItem(defaultItem(categoryId, name)); go('builder'); };
+  const start = (categoryId) => { setEditing(null); setItem(defaultItem(categoryId, name)); go('builder'); };
 
-  const addToCart = () => { setCart((c) => [...c, { id: `${Date.now()}${c.length}`, item, qty: 1 }]); go('cart'); };
+  const addToCart = () => {
+    if (editing) setCart((c) => c.map((l) => (l.id === editing ? { ...l, item } : l)));
+    else setCart((c) => [...c, { id: `${Date.now()}${c.length}`, item, qty: 1 }]);
+    setEditing(null);
+    go('cart');
+  };
+  const editLine = (l) => { setItem(l.item); setEditing(l.id); go('builder'); };
+  const reorder = (o) => { setCart((c) => [...c, ...o.lines.map((l, i) => ({ id: `${Date.now()}${c.length}${i}`, item: l.item, qty: l.qty }))]); window.scrollTo(0, 0); };
   const buyNow = () => { setLines([{ item, qty: 1 }]); setFromCart(false); go('order'); };
   const checkout = () => { setLines(cart.map(({ item: it, qty }) => ({ item: it, qty }))); setFromCart(true); go('order'); };
 
@@ -66,9 +76,9 @@ export default function App() {
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.25, ease: 'easeOut' }}>
             {view === 'home' && <Home name={name} setName={setName} start={start} />}
-            {view === 'builder' && <Builder item={item} setItem={setItem} onAdd={addToCart} onBuy={buyNow} back={() => window.history.back()} />}
-            {view === 'cart' && <Cart cart={cart} setCart={setCart} addMore={() => go('home', { scrollTo: 'collections' })} checkout={checkout} />}
-            {view === 'order' && <Order lines={lines} name={name} setName={setName} back={() => window.history.back()} onSent={(d) => { if (fromCart) setCart([]); setDone(d); go('done'); }} />}
+            {view === 'builder' && <Builder item={item} setItem={setItem} onAdd={addToCart} onBuy={buyNow} editing={Boolean(editing)} back={() => window.history.back()} />}
+            {view === 'cart' && <Cart cart={cart} setCart={setCart} history={history} reorder={reorder} edit={editLine} addMore={() => go('home', { scrollTo: 'collections' })} checkout={checkout} />}
+            {view === 'order' && <Order lines={lines} name={name} setName={setName} back={() => window.history.back()} onSent={(d) => { if (fromCart) setCart([]); setHistory((h) => [{ no: d.no, date: new Date().toISOString(), total: d.total, lines: d.lines }, ...h].slice(0, 20)); setDone(d); go('done'); }} />}
             {view === 'done' && <Done info={done} home={() => go('home')} />}
           </motion.div>
         </AnimatePresence>

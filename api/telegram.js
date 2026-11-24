@@ -11,21 +11,37 @@ function unpack(message) {
   try { return JSON.parse(Buffer.from(link.url.split('#')[1], 'base64url').toString('utf8')); } catch { return null; }
 }
 
-// Excel sheet of every order: Order No, Name, Phone, Item, Price, Transaction ID (+ date, qty, details)
+// Excel sheet of every order: Order No, Name, Phone, Item, Price, Paid, Made, Transaction ID (+ date, qty, details)
 const when = (iso) => new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const yn = (v) => (v ? 'Yes' : 'No');
 async function sendSheet(chat, env) {
   const orders = await readOrders(env);
   if (!orders.length) return tg('sendMessage', { chat_id: chat, text: 'No orders yet — the sheet will appear after the first one.' }, env);
-  const rows = [['Order No', 'Name', 'Phone', 'Item', 'Price (₹)', 'Transaction ID', 'Date', 'Qty', 'Details', 'Address', 'Notes'],
-    ...orders.map((o) => [o.no, o.name, o.phone, o.item, o.total, o.txn || '', when(o.date), o.qty, o.details || '', o.address || '', o.notes || ''])];
-  const bytes = xlsx(rows, [10, 22, 15, 24, 11, 22, 20, 6, 60, 36, 30]);
-  const missing = orders.filter((o) => !o.txn).length;
+  const rows = [['Order No', 'Name', 'Phone', 'Item', 'Price (₹)', 'Paid', 'Made', 'Transaction ID', 'Date', 'Qty', 'Details', 'Address', 'Notes'],
+    ...orders.map((o) => [o.no, o.name, o.phone, o.item, o.total, yn(o.paid || o.txn), yn(o.made), o.txn || '', when(o.date), o.qty, o.details || '', o.address || '', o.notes || ''])];
+  const bytes = xlsx(rows, [10, 22, 15, 28, 11, 7, 7, 20, 20, 6, 60, 36, 30]);
+  const unpaid = orders.filter((o) => !(o.paid || o.txn)).length;
+  const todo = orders.filter((o) => !o.made).length;
   const day = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   return sendTelegramFile(chat, bytes, `crystanva-orders-${day}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    `${orders.length} order${orders.length > 1 ? 's' : ''}${missing ? ` · ${missing} without a transaction ID yet` : ''}`, env);
+    `${orders.length} order${orders.length > 1 ? 's' : ''} · ${unpaid} unpaid · ${todo} not made yet`, env);
 }
 
-const HELP = 'Crystanva orders\n\n/sheet — get the Excel sheet of all orders\n/paid 12 UTR123456 — save the transaction ID for order #12\nOr just reply to an order message with the transaction ID.';
+const HELP = ['Crystanva orders', '',
+  '/sheet — Excel sheet of all orders',
+  '/paid 12 — mark order #12 as paid (add a transaction ID after it if you want: /paid 12 UTR123)',
+  '/made 12 — mark order #12 as made',
+  '/unpaid 12 and /unmade 12 — undo',
+  'You can also reply to an order message with the transaction ID.'].join(String.fromCharCode(10));
+
+// what each command changes on an order
+const ACTIONS = {
+  paid: (o, rest) => ({ ...o, paid: true, ...(rest ? { txn: rest.slice(0, 80) } : {}) }),
+  unpaid: (o) => ({ ...o, paid: false, txn: '' }),
+  made: (o) => ({ ...o, made: true }),
+  unmade: (o) => ({ ...o, made: false }),
+};
+const DONE = { paid: 'marked as paid', unpaid: 'marked as not paid', made: 'marked as made', unmade: 'marked as not made' };
 
 // Commands and replies typed in the shop chats (you and your friends).
 async function handleMessage(m, env) {
@@ -34,39 +50,38 @@ async function handleMessage(m, env) {
   if (!chatIds(env).includes(chat)) {
     // a friend (or a group) that is not on the list yet: tell them their chat ID so it can be added
     if (m.text.trim().toLowerCase().split(/[\s@]/)[0].match(/^\/(start|id)$/)) {
-      await tg('sendMessage', { chat_id: chat, text: `This chat's ID is ${chat}\nSend it to the Crystanva owner to get orders here.` }, env);
+      await tg('sendMessage', { chat_id: chat, text: `This chat's ID is ${chat}${String.fromCharCode(10)}Send it to the Crystanva owner to get orders here.` }, env);
     }
     return { ok: true, status: 200 };
   }
   const say = (text) => tg('sendMessage', { chat_id: chat, text, reply_to_message_id: m.message_id, allow_sending_without_reply: true }, env);
   const text = m.text.trim();
   const cmd = text.match(/^\/(\w+)(?:@\w+)?\s*([\s\S]*)$/);
+  const name = cmd ? cmd[1].toLowerCase() : '';
 
-  if (cmd && ['sheet', 'orders', 'excel'].includes(cmd[1].toLowerCase())) {
+  if (['sheet', 'orders', 'excel'].includes(name)) {
     if (!storeReady(env)) await say('Order storage is not connected yet.');
-    else await sendSheet(chat, env);
+    else { try { await sendSheet(chat, env); } catch (e) { await say(`Could not make the sheet: ${e.name} ${String(e.message).slice(0, 200)}`); } }
     return { ok: true, status: 200 };
   }
-  if (cmd && ['start', 'help'].includes(cmd[1].toLowerCase())) { await say(HELP); return { ok: true, status: 200 }; }
+  if (['start', 'help'].includes(name)) { await say(HELP); return { ok: true, status: 200 }; }
 
-  // transaction ID: "/paid 12 TXN" or a reply to an order message
-  let no = null; let txn = '';
-  if (cmd && cmd[1].toLowerCase() === 'paid') {
-    const p = cmd[2].match(/^#?(\d+)\s+(\S[\s\S]*)$/);
-    if (!p) { await say('Use it like: /paid 12 UTR123456'); return { ok: true, status: 200 }; }
-    no = Number(p[1]); txn = p[2].trim();
+  // "/paid 12", "/paid 12 UTR123", "/made 12" — or a plain reply to an order message (saves the transaction ID)
+  let action = null; let no = null; let rest = '';
+  if (ACTIONS[name]) {
+    const p = cmd[2].match(/^#?(\d+)\s*([\s\S]*)$/);
+    if (!p) { await say(`Add the order number, like: /${name} 12`); return { ok: true, status: 200 }; }
+    action = name; no = Number(p[1]); rest = p[2].trim();
   } else if (!cmd && m.reply_to_message?.text?.includes('New Crystanva order')) {
-    no = Number((m.reply_to_message.text.match(/order #(\d+)/) || [])[1]);
-    txn = text;
+    action = 'paid'; no = Number((m.reply_to_message.text.match(/order #(\d+)/) || [])[1]); rest = text;
   }
-  if (!no || !txn) return { ok: true, status: 200 };
+  if (!action || !no) return { ok: true, status: 200 };
   if (!storeReady(env)) { await say('Order storage is not connected yet.'); return { ok: true, status: 200 }; }
-  txn = txn.slice(0, 80);
   let found = false;
   try {
-    await updateOrders(env, (list) => list.map((o) => { if (o.no === no) { found = true; return { ...o, txn }; } return o; }));
-  } catch { await say('Busy for a moment — please send it again.'); return { ok: true, status: 200 }; }
-  await say(found ? `✅ Order #${no} · transaction ID saved: ${txn}` : `Order #${no} was not found.`);
+    await updateOrders(env, (list) => list.map((o) => { if (o.no === no) { found = true; return ACTIONS[action](o, rest); } return o; }));
+  } catch (e) { await say(`Could not save: ${e.name} ${String(e.message).slice(0, 150)}`); return { ok: true, status: 200 }; }
+  await say(found ? `✅ Order #${no} ${DONE[action]}${action === 'paid' && rest ? ` · transaction ID ${rest.slice(0, 80)}` : ''}` : `Order #${no} was not found.`);
   return { ok: true, status: 200 };
 }
 

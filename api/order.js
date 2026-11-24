@@ -11,6 +11,7 @@ export async function handle(order, env) {
 
   // number the order and log it (this is what the Excel sheet is made from)
   let no = null;
+  let logErr = '';
   if (storeReady(env)) {
     try {
       await updateOrders(env, (list) => {
@@ -22,7 +23,7 @@ export async function handle(order, env) {
           address: String(order.address || '').slice(0, 400), notes: String(order.notes || '').slice(0, 400),
         }];
       });
-    } catch { no = null; } // never lose an order because the log was busy
+    } catch (e) { no = null; logErr = `${e.name}: ${String(e.message).slice(0, 120)}`; console.error('order log failed', e); } // never lose an order because the log was busy
   }
 
   const block = (i, n) => [
@@ -31,8 +32,8 @@ export async function handle(order, env) {
     `<b>Quantity:</b> ${esc(i.quantity)}${items.length > 1 ? ` · ₹${esc(i.total)}` : ''}`,
   ].join('\n');
   const note = no
-    ? '\n<i>↩️ Reply to this message with the transaction ID to log it. Send /sheet for the Excel file.</i>'
-    : storeReady(env) ? '\n<i>⚠️ Could not add this order to the sheet — please note it down.</i>' : null;
+    ? `\n<i>After payment send /paid ${no} · when it is ready send /made ${no} · /sheet gives the Excel file.</i>`
+    : storeReady(env) ? `\n<i>⚠️ Could not add this order to the sheet — please note it down. ${esc(logErr)}</i>` : null;
   const lines = [
     `🔮 <b>New Crystanva order${no ? ` #${no}` : ''}</b>`,
     '',
@@ -45,7 +46,8 @@ export async function handle(order, env) {
     order.notes ? `<b>Notes:</b> ${esc(order.notes)}` : null,
     note,
   ].filter((l) => l !== null);
-  return sendTelegram(lines.join('\n'), env);
+  const sent = await sendTelegram(lines.join('\n'), env);
+  return sent.ok ? { ...sent, data: { ok: true, no } } : sent;
 }
 
 export default vercel(handle);

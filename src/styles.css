@@ -715,3 +715,16 @@ h1, h2, h3 { font-weight: 500; }
   .sum-line ul, .sum-line .qty { grid-column: 1 / -1; }
   .sum-line ul { margin-top: 8px; }
 }
+.cart-links { display: flex; gap: 14px; justify-content: flex-end; }
+.cart-links .link-btn:first-child { color: var(--navy); }
+.prev-orders { margin-top: 44px; }
+.prev-orders h2 { font-size: 24px; margin: 0 0 14px; }
+.prev-order { padding: 16px; margin-bottom: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; }
+.prev-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.prev-head span { color: var(--muted); font-size: 13px; }
+.prev-head strong { margin-left: auto; font-family: var(--serif); font-size: 20px; }
+.prev-order ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.prev-order li { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.prev-order small { display: block; color: var(--muted); font-size: 12px; }
+.prev-art { width: 44px; flex: none; border-radius: 10px; background: var(--cream-2); padding: 2px; }
+.prev-art .item-img, .prev-art .pv { width: 100%; display: block; }
