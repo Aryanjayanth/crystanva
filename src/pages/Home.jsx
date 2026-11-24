@@ -142,7 +142,19 @@ function Reviews({ name }) {
   const [mine, setMine] = useState(() => { try { return JSON.parse(localStorage.getItem(MY_REVIEWS)) || []; } catch { return []; } });
   const [open, setOpen] = useState(false);
   const [thanks, setThanks] = useState(false);
-  const all = [...mine, ...reviews];
+  // reviews you approved from Telegram (live), plus any hand-added ones in data.js
+  const [approved, setApproved] = useState([]);
+  useEffect(() => {
+    fetch('/api/reviews').then((r) => (r.ok ? r.json() : [])).then((list) => Array.isArray(list) && setApproved(list)).catch(() => {});
+  }, []);
+  const live = approved.map((r) => {
+    const cat = categories.find((c) => c.id === r.category) || categories[0];
+    return { ...r, item: { kind: cat.kind, ...cat.sample } };
+  });
+  // once your own review is approved, show the live one instead of the "awaiting" copy
+  const same = (a, b) => a.name === b.name && a.text === b.text;
+  const stillPending = mine.filter((m) => !live.some((l) => same(l, m)));
+  const all = [...stillPending, ...live, ...reviews];
 
   const added = (r) => {
     const next = [r, ...mine];
@@ -177,7 +189,7 @@ function Reviews({ name }) {
 
       <div className="reviews">
         {all.map((r, i) => (
-          <motion.figure key={`${r.name}-${r.at || i}`} className={`review ${r.pending ? 'pending' : ''}`} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.08 }}>
+          <motion.figure key={r.id || `${r.name}-${r.at || i}`} className={`review ${r.pending ? 'pending' : ''}`} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.08 }}>
             <div className="review-art"><ItemImage {...r.item} /></div>
             <div>
               {r.pending && <span className="pending-chip">Awaiting approval · only you can see this</span>}

@@ -24,10 +24,11 @@ Everything is in `src/data.js`:
 4. Run `npm run telegram`. It finds your chat ID, saves it to `.env`, and sends you a test message.
 5. Restart `npm run dev`.
 
-## Reviews
-Customers can post a review from the "Happy customers" section. It is sent to your Telegram,
-and the customer sees it on their own device marked "Awaiting approval". To publish it for everyone,
-add it to `reviews` in `src/data.js`.
+## Reviews (approved from Telegram)
+Customers post a review from the "Happy customers" section. It arrives in your Telegram with
+**✅ Approve** and **❌ Reject** buttons. Approve puts it on the site for everyone within about a minute;
+you can later tap **🗑 Remove from site**. Approved reviews are stored in the Vercel Blob store
+`crystanva-reviews` (connected to the project). Nothing is published until you approve it.
 
 ## Put it online (free, Vercel)
 1. Push this folder to GitHub.

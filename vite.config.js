@@ -3,9 +3,11 @@ import react from '@vitejs/plugin-react';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { handle as order } from './api/order.js';
 import { handle as review } from './api/review.js';
+import { handle as reviews } from './api/reviews.js';
+import { handle as telegram } from './api/telegram.js';
 
 // Local dev: serves the /api routes the same way Vercel will in production.
-const routes = { '/api/order': order, '/api/review': review };
+const routes = { '/api/order': order, '/api/review': review, '/api/reviews': reviews, '/api/telegram': telegram };
 
 function devApi(env) {
   return {
@@ -39,14 +41,14 @@ function devApi(env) {
             res.setHeader('Content-Type', 'application/json');
             try {
               const data = JSON.parse(body || '{}');
-              const r = await handle(data, env);
+              const r = await handle(data, env, req.headers);
               if (!r.ok && r.unconfigured) {
                 console.log(`\n[demo mode – Telegram not configured] ${path} received:\n`, data, '\n');
                 res.end(JSON.stringify({ ok: true, demo: true }));
                 return;
               }
               res.statusCode = r.status;
-              res.end(JSON.stringify(r.ok ? { ok: true } : { error: r.error }));
+              res.end(JSON.stringify(r.ok ? (r.data ?? { ok: true }) : { error: r.error }));
             } catch {
               res.statusCode = 400;
               res.end(JSON.stringify({ error: 'Bad request' }));

@@ -17,7 +17,7 @@ export default function ReviewForm({ defaultName, onDone, onCancel }) {
     setError('');
     setStatus('sending');
     const cat = categories.find((c) => c.id === product);
-    const review = { name: name.trim(), product: cat.title, rating, text: text.trim() };
+    const review = { name: name.trim(), product: cat.title, category: cat.id, rating, text: text.trim() };
     try {
       const res = await fetch('/api/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(review) });
       if (!res.ok) throw new Error();
