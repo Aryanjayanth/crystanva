@@ -1,7 +1,7 @@
 // POST /api/review — a customer posts a review. It goes to your Telegram with
 // ✅ Approve / ❌ Reject buttons; approving publishes it on the site (see api/telegram.js).
 import { randomBytes } from 'node:crypto';
-import { esc, sendTelegram, vercel } from './_telegram.js';
+import { esc, sendTelegram, sendTelegramPhoto, vercel } from './_telegram.js';
 
 const CATEGORY_IDS = ['personal', 'shapes', 'pens', 'plates'];
 
@@ -32,9 +32,17 @@ export async function handle(r, env) {
     `“${esc(text)}”`,
   ].join('\n');
 
-  return sendTelegram(msg, env, {
-    reply_markup: { inline_keyboard: [[{ text: '✅ Approve', callback_data: 'approve' }, { text: '❌ Reject', callback_data: 'reject' }]] },
-  });
+  const buttons = { reply_markup: { inline_keyboard: [[{ text: '✅ Approve', callback_data: 'approve' }, { text: '❌ Reject', callback_data: 'reject' }]] } };
+
+  // optional photo: arrives as a small JPEG data URL from the site; it's only stored if you approve
+  if (r?.photo) {
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(r.photo));
+    if (!m) return { ok: false, status: 400, error: 'That photo could not be read.' };
+    const bytes = Buffer.from(m[2], 'base64');
+    if (bytes.length > 3 * 1024 * 1024) return { ok: false, status: 413, error: 'That photo is too large.' };
+    return sendTelegramPhoto(bytes, m[1], msg, env, buttons);
+  }
+  return sendTelegram(msg, env, buttons);
 }
 
 export default vercel(handle);

@@ -13,6 +13,20 @@ export async function tg(method, payload, env) {
   return res.json().catch(() => ({ ok: false }));
 }
 
+// Send a photo (raw bytes) to your own chat, with an HTML caption and optional buttons.
+export async function sendTelegramPhoto(bytes, type, caption, env, extra = {}) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return { ok: false, status: 500, error: 'Telegram is not configured yet.', unconfigured: true };
+  const form = new FormData();
+  form.append('chat_id', env.TELEGRAM_CHAT_ID);
+  form.append('photo', new Blob([bytes], { type }), 'review.jpg');
+  form.append('caption', caption);
+  form.append('parse_mode', 'HTML');
+  for (const [k, v] of Object.entries(extra)) form.append(k, typeof v === 'string' ? v : JSON.stringify(v));
+  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
+  const r = await res.json().catch(() => ({ ok: false }));
+  return r.ok ? { ok: true, status: 200 } : { ok: false, status: 502, error: 'Telegram rejected the photo.' };
+}
+
 // Send a message to your own chat (orders, reviews).
 export async function sendTelegram(text, env, extra = {}) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return { ok: false, status: 500, error: 'Telegram is not configured yet.', unconfigured: true };

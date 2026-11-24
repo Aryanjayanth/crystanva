@@ -1,7 +1,7 @@
 // Approved reviews live in one small JSON file in your Vercel Blob store ("crystanva-reviews").
 // On Vercel the store is connected via BLOB_STORE_ID (secure OIDC access, no key to manage);
 // an older-style BLOB_READ_WRITE_TOKEN also works.
-import { put } from '@vercel/blob';
+import { del, put } from '@vercel/blob';
 
 const FILE = 'reviews.json';
 
@@ -25,6 +25,21 @@ export async function readApproved(env, fresh = false) {
   return Array.isArray(list) ? list : [];
 }
 
+const auth = (env) => (env.BLOB_READ_WRITE_TOKEN ? { token: env.BLOB_READ_WRITE_TOKEN } : {});
+
+// approved review photos: photos/<review id>.jpg
+export async function savePhoto(id, bytes, env) {
+  const blob = await put(`photos/${id}.jpg`, bytes, {
+    access: 'public', addRandomSuffix: false, allowOverwrite: true,
+    contentType: 'image/jpeg', cacheControlMaxAge: 31536000, ...auth(env),
+  });
+  return blob.url;
+}
+
+export async function deletePhoto(url, env) {
+  if (url) await del(url, auth(env)).catch(() => {});
+}
+
 export async function writeApproved(list, env) {
   await put(FILE, JSON.stringify(list), {
     access: 'public',
@@ -32,6 +47,6 @@ export async function writeApproved(list, env) {
     allowOverwrite: true,
     contentType: 'application/json',
     cacheControlMaxAge: 60,
-    ...(env.BLOB_READ_WRITE_TOKEN ? { token: env.BLOB_READ_WRITE_TOKEN } : {}),
+    ...auth(env),
   });
 }

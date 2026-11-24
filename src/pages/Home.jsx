@@ -190,7 +190,13 @@ function Reviews({ name }) {
       <div className="reviews">
         {all.map((r, i) => (
           <motion.figure key={r.id || `${r.name}-${r.at || i}`} className={`review ${r.pending ? 'pending' : ''}`} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.08 }}>
-            <div className="review-art"><ItemImage {...r.item} /></div>
+            {r.photo || r.photoThumb ? (
+              <a className="review-art review-photo" href={r.photo || r.photoThumb} target="_blank" rel="noreferrer" aria-label={`Photo from ${r.name}`}>
+                <img src={r.photo || r.photoThumb} alt="" loading="lazy" decoding="async" />
+              </a>
+            ) : (
+              <div className="review-art"><ItemImage {...r.item} /></div>
+            )}
             <div>
               {r.pending && <span className="pending-chip">Awaiting approval · only you can see this</span>}
               <div className="stars" aria-label={`${r.rating || 5} stars`}>{'★'.repeat(r.rating || 5)}<span className="dim">{'★'.repeat(5 - (r.rating || 5))}</span></div>

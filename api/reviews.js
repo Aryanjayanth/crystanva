@@ -7,7 +7,7 @@ export async function handle(_body, env) {
   return {
     ok: true,
     status: 200,
-    data: list.map(({ id, name, rating, category, text, at }) => ({ id, name, rating, category, text, at })),
+    data: list.map(({ id, name, rating, category, text, at, photo }) => ({ id, name, rating, category, text, at, photo })),
     headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' },
   };
 }
