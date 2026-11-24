@@ -97,6 +97,7 @@ async function handleMessage(m, env) {
         details: extra.join('; ').slice(0, 1500), address: (f.address || '').slice(0, 400), notes: (f.notes || '').slice(0, 400),
       }));
       await say(`✅ Added to the sheet as order #${saved.no} (${f.name}).`);
+      return { ok: true, status: 200, data: { added: saved.no } };
     } catch (e) { await say(`Could not add it: ${e.name} ${String(e.message).slice(0, 150)}`); }
     return { ok: true, status: 200 };
   }
