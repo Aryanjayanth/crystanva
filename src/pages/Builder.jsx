@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Resin from '../components/Resin.jsx';
 import { categories, colors, glitters, shapes, plates, placements, describe, priceOf, FLORAL_PRICE } from '../data';
 
@@ -15,15 +16,20 @@ export default function Builder({ item, setItem, next, back }) {
   const set = (patch) => setItem({ ...item, ...patch });
   const { details } = describe(item);
   let step = 1;
+  // two-sided pieces: colour / glitter / style apply to the side being edited
+  const [side, setSide] = useState('front');
+  const twoSided = Boolean(cat.twoSided && item.back);
+  const look = twoSided && side === 'back' ? item.back : item;
+  const setLook = (patch) => (twoSided && side === 'back' ? set({ back: { ...item.back, ...patch } }) : set(patch));
 
   return (
     <section className="builder">
       <div className="builder-preview">
         <button className="back" onClick={back}>← Back</button>
         <div className="stage">
-          <Resin kind={item.kind} value={item.value} color={item.color} glitter={item.glitter} placement={item.placement} />
+          <Resin kind={item.kind} value={item.value} color={item.color} glitter={item.glitter} placement={item.placement} back={twoSided ? item.back : undefined} showBack={twoSided && side === 'back'} />
         </div>
-        <p className="stage-caption">{details.map((d) => d.value).join(' · ')}</p>
+        <p className="stage-caption">{twoSided ? `Showing the ${side} · tap Front / Back to switch` : details.map((d) => d.value).join(' · ')}</p>
         <p className="stage-hint">Drag to turn it in the light</p>
       </div>
 
@@ -42,11 +48,11 @@ export default function Builder({ item, setItem, next, back }) {
           </div>
         )}
 
-        {(item.kind === 'shape' || item.kind === 'plate') && (
+        {(item.kind === 'shape' || item.kind === 'plate') && !cat.twoSided && (
           <div className="opt">
             <h4><span>{step++}</span> Pick your shape</h4>
             <div className="shapes">
-              {(item.kind === 'plate' ? plates : shapes).map((s) => (
+              {(item.kind === 'plate' ? plates : shapes.filter((x) => !x.special)).map((s) => (
                 <button key={s.id} disabled={!s.inStock} className={`shape ${item.value === s.id ? 'on' : ''}`} onClick={() => set({ value: s.id })}>
                   <svg viewBox="0 0 400 400"><path d={s.d} /></svg>
                   <span>{s.name}</span>
@@ -57,11 +63,25 @@ export default function Builder({ item, setItem, next, back }) {
           </div>
         )}
 
+        {twoSided && (
+          <div className="opt">
+            <h4><span>{step++}</span> Pick a side to design</h4>
+            <div className="sides">
+              {['front', 'back'].map((sd) => (
+                <button key={sd} type="button" className={`side-tab ${side === sd ? 'on' : ''}`} onClick={() => setSide(sd)}>
+                  <b>{sd === 'front' ? 'Front' : 'Back'}</b>
+                  <small>{colors.find((c) => c.id === (sd === 'front' ? item : item.back).color)?.name} · {glitters.find((g) => g.id === (sd === 'front' ? item : item.back).glitter)?.name}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="opt">
-          <h4><span>{step++}</span> Base colour</h4>
+          <h4><span>{step++}</span> {twoSided ? `${side === 'front' ? 'Front' : 'Back'} colour` : 'Base colour'}</h4>
           <div className="swatches">
             {colors.map((c) => (
-              <button key={c.id} disabled={!c.inStock} className={`swatch ${item.color === c.id ? 'on' : ''}`} onClick={() => set({ color: c.id })}>
+              <button key={c.id} disabled={!c.inStock} className={`swatch ${look.color === c.id ? 'on' : ''}`} onClick={() => setLook({ color: c.id })}>
                 <i className={c.clear ? 'clear' : ''} style={c.clear ? undefined : { background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,.55), transparent 60%), ${c.hex}` }} />
                 <span>{c.name}{!c.inStock && <em> · sold out</em>}</span>
               </button>
@@ -70,10 +90,10 @@ export default function Builder({ item, setItem, next, back }) {
         </div>
 
         <div className="opt">
-          <h4><span>{step++}</span> Glitter &amp; foil</h4>
+          <h4><span>{step++}</span> {twoSided ? `${side === 'front' ? 'Front' : 'Back'} glitter & foil` : 'Glitter & foil'}</h4>
           <div className="swatches">
             {glitters.map((g) => (
-              <button key={g.id} disabled={!g.inStock} className={`swatch ${item.glitter === g.id ? 'on' : ''}`} onClick={() => set({ glitter: g.id })}>
+              <button key={g.id} disabled={!g.inStock} className={`swatch ${look.glitter === g.id ? 'on' : ''}`} onClick={() => setLook({ glitter: g.id })}>
                 <i className={g.kind === 'none' ? 'plain' : ''} style={g.kind === 'none' ? undefined : { background: sparkleBg(g.hex) }} />
                 <span>{g.name}{!g.inStock && <em> · sold out</em>}</span>
               </button>
@@ -81,13 +101,13 @@ export default function Builder({ item, setItem, next, back }) {
           </div>
         </div>
 
-        {item.glitter !== 'none' && (
+        {look.glitter !== 'none' && (
           <div className="opt">
             <h4><span>{step++}</span> Glitter style</h4>
             <div className="placements">
               {placements.map((p) => (
-                <button key={p.id} className={`placement ${(item.placement || 'top') === p.id ? 'on' : ''}`} onClick={() => set({ placement: p.id })}>
-                  <i className={`pl-${p.id}`} style={{ '--g': glitters.find((g) => g.id === item.glitter)?.hex }} />
+                <button key={p.id} className={`placement ${(look.placement || 'top') === p.id ? 'on' : ''}`} onClick={() => setLook({ placement: p.id })}>
+                  <i className={`pl-${p.id}`} style={{ '--g': glitters.find((g) => g.id === look.glitter)?.hex }} />
                   <span>{p.name}</span>
                 </button>
               ))}

@@ -53,7 +53,7 @@ function Hero({ name, setName, start }) {
             <AnimatePresence mode="wait"><motion.em key={display} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>{display}</motion.em></AnimatePresence>.
           </span>
         </h1>
-        <p className="lead">Keychains, pens and coasters poured by hand in the colours and sparkle <i>you</i> choose. Design it here and we'll make it just for you.</p>
+        <p className="lead">Keychains and pens poured by hand in the colours and sparkle <i>you</i> choose. Design it here and we'll make it just for you.</p>
         <label className="name-field">
           <span>What should we call you?</span>
           <input value={name} onChange={(e) => setName(e.target.value.slice(0, 24))} placeholder="Type your name" />

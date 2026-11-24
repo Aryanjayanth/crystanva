@@ -3,7 +3,7 @@
 import { randomBytes } from 'node:crypto';
 import { esc, sendTelegram, sendTelegramPhoto, vercel } from './_telegram.js';
 
-const CATEGORY_IDS = ['personal', 'shapes', 'pens', 'plates'];
+const CATEGORY_IDS = ['personal', 'special', 'shapes', 'pens'];
 
 export async function handle(r, env) {
   const rating = Math.max(1, Math.min(5, Math.round(Number(r?.rating) || 0)));

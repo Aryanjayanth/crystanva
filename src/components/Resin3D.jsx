@@ -140,7 +140,9 @@ function buildPiece(kind, value, font) {
   shell.translate(0, 0, -dims.D / 2);
   const core = new THREE.ExtrudeGeometry(three, { depth: dims.cd, bevelEnabled: false, curveSegments: 28 });
   core.translate(0, 0, -dims.cd / 2);
-  return { shell, core, contours, bbox, hole, dims };
+  // two-sided pieces: each side gets its own half of the core (0..cd/2 is the front half)
+  const coreHalf = new THREE.ExtrudeGeometry(three, { depth: dims.cd / 2, bevelEnabled: false, curveSegments: 28 });
+  return { shell, core, coreHalf, contours, bbox, hole, dims };
 }
 
 // Built pieces and glitter are cached, so switching back to a letter/colour is instant.
@@ -151,10 +153,11 @@ function getPiece(kind, value, font) {
   return pieceCache.get(key);
 }
 const flakeCache = new Map();
-function getFlakes(kind, value, piece, glitter, placement, clear = false) {
+// side: undefined = whole piece, 'front' / 'back' = only that face (two-sided pieces)
+function getFlakes(kind, value, piece, glitter, placement, clear = false, side) {
   if (!glitter || glitter.kind === 'none') return null;
-  const key = `${kind}|${value}|${glitter.id}|${placement}|${clear}`;
-  if (!flakeCache.has(key)) flakeCache.set(key, kind === 'pen' ? makePenFlakes(glitter, placement, clear) : makeFlakes(piece, glitter, placement, clear));
+  const key = `${kind}|${value}|${glitter.id}|${placement}|${clear}|${side || ''}`;
+  if (!flakeCache.has(key)) flakeCache.set(key, kind === 'pen' ? makePenFlakes(glitter, placement, clear) : makeFlakes(piece, glitter, placement, clear, side));
   return flakeCache.get(key);
 }
 // warm the cache in idle time (e.g. the hero's next colour/glitter combos) so changes never stutter
@@ -218,9 +221,9 @@ function flakeData(points, glitter, r) {
   return { matrices, cols, count: points.length, foil, id: `${glitter.id}-${points.length}-${r()}` };
 }
 
-function makeFlakes(piece, glitter, placement, clear) {
+function makeFlakes(piece, glitter, placement, clear, side) {
   if (!piece || !glitter || glitter.kind === 'none') return null;
-  const r = rng(hashStr(glitter.id + placement));
+  const r = rng(hashStr(glitter.id + placement + (side || '')));
   const N = glitter.kind === 'foil' ? 320 : IS_SMALL ? 1300 : 2200;
   const { contours, bbox, hole, dims } = piece;
   const z0 = dims.cd / 2 + 0.006, z1 = dims.D / 2 + dims.bt * 0.6;
@@ -232,7 +235,8 @@ function makeFlakes(piece, glitter, placement, clear) {
     if (!inside(v.set(x, y), contours)) continue;
     if (hole && Math.hypot(x - hole.x, y - hole.y) < hole.r + 0.035) continue;
     // coloured resin: glitter sits in the clear layer over the colour; clear resin: all the way through
-    pts.push({ x, y, z: clear ? (r() * 2 - 1) * z1 : (z0 + r() * (z1 - z0)) * (r() < 0.55 ? 1 : -1) });
+    const sign = side === 'front' ? 1 : side === 'back' ? -1 : r() < 0.55 ? 1 : -1;
+    pts.push({ x, y, z: clear ? (side ? sign * r() * z1 : (r() * 2 - 1) * z1) : sign * (z0 + r() * (z1 - z0)) });
   }
   return flakeData(pts, glitter, r);
 }
@@ -380,14 +384,24 @@ function Tassel({ piece, mat, hex }) {
 }
 
 /* ---------- the piece ---------- */
-function Piece({ kind, value, color, glitter, placement, font, still }) {
+function Piece({ kind, value, color, glitter, placement, back, showBack, font, still }) {
   const col = colors.find((c) => c.id === color);
   const base = col?.hex ?? '#ffffff';
   const clear = Boolean(col?.clear);
   const g = glitters.find((x) => x.id === glitter);
   const mat = useMaterials(base, clear);
   const piece = useMemo(() => (kind === 'pen' ? null : getPiece(kind, value, font)), [kind, value, font]);
-  const flakes = useMemo(() => getFlakes(kind, value, piece, g, placement, clear), [kind, value, piece, g, placement, clear]);
+  const two = Boolean(back) && kind !== 'pen';
+  const flakes = useMemo(() => getFlakes(kind, value, piece, g, placement, clear, two ? 'front' : undefined), [kind, value, piece, g, placement, clear, two]);
+  // back side (two-sided pieces): its own colour + glitter
+  const backCol = colors.find((c) => c.id === back?.color);
+  const backClear = Boolean(backCol?.clear);
+  const backG = glitters.find((x) => x.id === back?.glitter);
+  const backFlakes = useMemo(() => (two ? getFlakes(kind, value, piece, backG, back?.placement || 'top', backClear, 'back') : null), [two, kind, value, piece, backG, back?.placement, backClear]);
+  const backCore = useMemo(() => new THREE.MeshPhysicalMaterial({ roughness: 0.32, clearcoat: 0.4, envMapIntensity: 0.9 }), []);
+  useEffect(() => { if (backCol) backCore.color.set(backCol.hex); }, [backCol, backCore]);
+  useEffect(() => () => backCore.dispose(), [backCore]);
+  const turn = useRef(0); // eases to 0 (front) or π (back)
 
   const group = useRef();
   const pop = useRef(0);
@@ -406,7 +420,8 @@ function Piece({ kind, value, color, glitter, placement, font, still }) {
     pop.current = Math.min(1, pop.current + dt * 2.2);
     const e = 1 - Math.pow(1 - pop.current, 3);
     group.current.scale.setScalar(0.75 + 0.25 * e);
-    group.current.rotation.y = Math.sin(t * 0.55) * 0.42 + (1 - e) * -0.8;
+    turn.current += ((showBack ? Math.PI : 0) - turn.current) * Math.min(1, dt * 5);
+    group.current.rotation.y = turn.current + Math.sin(t * 0.55) * 0.42 + (1 - e) * -0.8;
     group.current.rotation.x = Math.sin(t * 0.35) * 0.05;
   });
 
@@ -433,9 +448,20 @@ function Piece({ kind, value, color, glitter, placement, font, still }) {
     <group ref={group}>
       {/* coasters / platters are shown lying back a little so you see the poured surface */}
       <group rotation={[kind === 'plate' ? -0.75 : 0, 0, 0]}>
-        {!clear && <mesh geometry={piece.core} material={mat.core} />}
-        <Flakes data={flakes} />
-        <mesh geometry={piece.shell} material={clear ? mat.clearShell : mat.shell} />
+        {two ? (
+          <>
+            {!clear && <mesh geometry={piece.coreHalf} material={mat.core} />}
+            {!backClear && <mesh geometry={piece.coreHalf} material={backCore} position={[0, 0, -piece.dims.cd / 2]} />}
+            <Flakes data={flakes} />
+            <Flakes data={backFlakes} />
+          </>
+        ) : (
+          <>
+            {!clear && <mesh geometry={piece.core} material={mat.core} />}
+            <Flakes data={flakes} />
+          </>
+        )}
+        <mesh geometry={piece.shell} material={clear || (two && backClear) ? mat.clearShell : mat.shell} />
         {piece.hole && (kind === 'bookmark'
           ? <Tassel piece={piece} mat={mat} hex={g && g.kind !== 'none' ? g.hex : '#c9a45c'} />
           : <KeyRing piece={piece} mat={mat} />)}
@@ -477,7 +503,7 @@ function Shadow() {
 }
 
 // still = render one frame only (cheap); interactive = drag to rotate; capture = allow saving the image
-export default function Resin3D({ kind = 'letter', value = 'J', color = 'pink', glitter = 'gold-foil', placement = 'top', className = '', still = false, interactive = true, capture = false, warm }) {
+export default function Resin3D({ kind = 'letter', value = 'J', color = 'pink', glitter = 'gold-foil', placement = 'top', back, showBack = false, className = '', still = false, interactive = true, capture = false, warm }) {
   const font = useMoldFont();
   const lift = kind === 'pen' || kind === 'plate' ? 0 : -0.38;
   const box = useRef();
@@ -505,7 +531,7 @@ export default function Resin3D({ kind = 'letter', value = 'J', color = 'pink', 
         <directionalLight position={[3, 4, 5]} intensity={1.5} />
         <directionalLight position={[-4, 1.5, -3]} intensity={0.6} />
         <group position={[0, lift, 0]}>
-          <Piece kind={kind} value={value} color={color} glitter={glitter} placement={placement} font={font} still={still} />
+          <Piece kind={kind} value={value} color={color} glitter={glitter} placement={placement} back={back} showBack={showBack} font={font} still={still} />
         </group>
         <Shadow />
         {interactive && <OrbitControls enablePan={false} enableZoom={false} enableDamping minPolarAngle={Math.PI / 2 - 0.45} maxPolarAngle={Math.PI / 2 + 0.25} />}

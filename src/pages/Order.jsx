@@ -50,7 +50,7 @@ export default function Order({ item, name, setName, back, onSent }) {
       <button className="back" onClick={back}>← Edit design</button>
       <div className="order-grid">
         <aside className="summary">
-          <div className="summary-art"><Resin kind={item.kind} value={item.value} color={item.color} glitter={item.glitter} placement={item.placement} still interactive={false} /></div>
+          <div className="summary-art"><Resin kind={item.kind} value={item.value} color={item.color} glitter={item.glitter} placement={item.placement} back={item.back} still interactive={false} /></div>
           <h3>{title}</h3>
           <ul>{details.map((d) => <li key={d.label}><span>{d.label}</span><b>{d.value}</b></li>)}</ul>
           <div className="qty">

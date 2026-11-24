@@ -15,7 +15,7 @@ export default function Done({ info, home }) {
             transition={{ duration: 1.4, delay: 0.2 }}
           />
         ))}
-        <Resin kind={info.item.kind} value={info.item.value} color={info.item.color} glitter={info.item.glitter} placement={info.item.placement} still interactive={false} />
+        <Resin kind={info.item.kind} value={info.item.value} color={info.item.color} glitter={info.item.glitter} placement={info.item.placement} back={info.item.back} still interactive={false} />
       </div>
       <span className="eyebrow">Request received</span>
       <h1>Thank you, {first}!</h1>
