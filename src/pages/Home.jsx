@@ -11,14 +11,33 @@ const combos = [
   ['peach', 'silver-foil'], ['pearl', 'purple-glitter'], ['champagne', 'teal-glitter'],
 ];
 
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const pick = (list, not) => { let x; do { x = list[Math.floor(Math.random() * list.length)]; } while (list.length > 1 && x === not); return x; };
+const randomLook = (prev, letterFixed) => ({
+  letter: letterFixed || pick(LETTERS, prev?.letter),
+  combo: pick(combos, prev?.combo),
+});
+
 function Hero({ name, setName, start }) {
-  const [i, setI] = useState(0);
-  useEffect(() => { const t = setInterval(() => setI((v) => (v + 1) % combos.length), 2600); return () => clearInterval(t); }, []);
   const hasName = /^[A-Za-z]/.test(name.trim());
-  const letter = hasName ? initialOf(name) : 'C';
-  const [color, glitter] = combos[i];
-  // pre-build every colour/glitter combo for this letter in idle time, so the cycle never stutters
-  const warm = useMemo(() => combos.map(([, gl]) => ({ kind: 'letter', value: letter, glitter: gl, placement: 'top' })), [letter]);
+  const fixed = hasName ? initialOf(name) : null; // typed a name → stay on their initial
+  // current look + the next one; the next is pre-built in idle time so the switch never stutters
+  const [look, setLook] = useState(() => randomLook(null, fixed));
+  const [next, setNext] = useState(() => randomLook(look, fixed));
+  useEffect(() => {
+    const t = setInterval(() => {
+      setLook(next);
+      setNext(randomLook(next, fixed));
+    }, 2800);
+    return () => clearInterval(t);
+  }, [next, fixed]);
+  useEffect(() => { // name typed or cleared: switch right away
+    setLook((l) => ({ ...l, letter: fixed || l.letter }));
+    setNext((n) => ({ ...n, letter: fixed || pick(LETTERS, n.letter) }));
+  }, [fixed]);
+  const letter = look.letter;
+  const [color, glitter] = look.combo;
+  const warm = useMemo(() => [{ kind: 'letter', value: next.letter, glitter: next.combo[1], placement: 'top' }], [next]);
   const display = name.trim() ? name.trim().split(' ')[0] : 'you';
 
   return (
@@ -138,7 +157,7 @@ function Reviews({ name }) {
       <div className="section-head">
         <span className="eyebrow">Happy customers</span>
         <h2>Little pieces, big smiles</h2>
-        <p>What people say about the pieces we made for them.</p>
+        <p>{all.length ? 'What people say about the pieces we made for them.' : 'No reviews yet — got a Crystanva piece? Be the first to share how it turned out.'}</p>
       </div>
 
       <div className="review-cta">
@@ -150,7 +169,7 @@ function Reviews({ name }) {
           ) : (
             <motion.div key="btn" className="review-cta-row" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {thanks && <p className="thanks">Thank you! Your review will appear for everyone once we approve it.</p>}
-              <button className="btn ghost" onClick={() => { setOpen(true); setThanks(false); }}>✎ Write a review</button>
+              <button className={`btn ${all.length ? 'ghost' : 'primary'}`} onClick={() => { setOpen(true); setThanks(false); }}>✎ {all.length ? 'Write a review' : 'Be the first to review'}</button>
             </motion.div>
           )}
         </AnimatePresence>

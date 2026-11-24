@@ -2,7 +2,7 @@
 //  Everything you might want to edit lives in this file.
 //  • PRICE        – price of one item (₹)
 //  • inStock      – set to false and the option shows as "sold out"
-//  • reviews      – PLACEHOLDER testimonials: swap in real ones
+//  • reviews      – approved customer reviews (empty until you add real ones)
 // ─────────────────────────────────────────────────────────────
 export const PRICE = 149;
 
@@ -126,12 +126,7 @@ export const describe = (item) => {
   return { title: c.title, details };
 };
 
-// PLACEHOLDER reviews — replace with real feedback from your first customers.
-export const reviews = [
-  { name: 'Ananya R.', text: 'The letter keychain looks even better in person. The glitter catches the light like crazy!', item: { kind: 'letter', value: 'A', color: 'white', glitter: 'rosegold-foil' } },
-  { name: 'Rohan K.', text: 'Ordered a pen for my sister — she has not stopped using it. Super smooth ordering too.', item: { kind: 'pen', value: 'pen', color: 'black', glitter: 'gold-glitter' } },
-  { name: 'Meghana S.', text: 'Loved that I could pick everything myself. It genuinely feels made for me.', item: { kind: 'letter', value: 'M', color: 'peach', glitter: 'gold-foil' } },
-  { name: 'Farhan A.', text: 'Gifted the star keychain and it was a hit. The finish is so glossy and clean.', item: { kind: 'shape', value: 'star', color: 'pink', glitter: 'silver-foil' } },
-  { name: 'Divya P.', text: 'The teal glitter coaster is gorgeous. Feels like a tiny piece of art on my desk.', item: { kind: 'plate', value: 'hexagon', color: 'champagne', glitter: 'teal-glitter' } },
-  { name: 'Sai T.', text: 'Fast replies and a beautiful result. Already planning my next order!', item: { kind: 'letter', value: 'S', color: 'pearl', glitter: 'purple-glitter' } },
-];
+// Approved customer reviews shown to everyone. Add real ones here when customers send them
+// (they arrive in your Telegram), e.g.:
+// { name: 'Ananya R.', rating: 5, text: 'Loved it!', item: { kind: 'letter', value: 'A', color: 'white', glitter: 'rosegold-foil' } },
+export const reviews = [];
