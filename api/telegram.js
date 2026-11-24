@@ -1,7 +1,7 @@
 // POST /api/telegram — Telegram calls this when you tap a button under a review.
 // ✅ Approve → review goes live on the site · ❌ Reject → ignored · 🗑 Remove → taken off the site.
 import { tg, vercel } from './_telegram.js';
-import { readApproved, writeApproved, storeReady, savePhoto, deletePhoto } from './_store.js';
+import { storeReady, savePhoto, deletePhoto, updateApproved } from './_store.js';
 
 // works for text reviews (entities) and photo reviews (caption_entities)
 function unpack(message) {
@@ -58,19 +58,28 @@ export async function handle(update, env, headers) {
     return { ok: true, status: 200 };
   }
 
-  if (q.data === 'approve') {
-    const list = await readApproved(env, true);
-    if (!list.some((r) => r.id === review.id)) {
+  try {
+    if (q.data === 'approve') {
       if (isPhoto) review.photo = await copyPhoto(review);
-      await writeApproved([review, ...list].slice(0, 200), env);
+      await updateApproved(env, (list) => (list.some((r) => r.id === review.id) ? list : [review, ...list].slice(0, 200)));
+      await done('Published on the site ✨', '✅ Approved — live on the site within a minute', [{ text: '🗑 Remove from site', callback_data: 'remove' }]);
+      return { ok: true, status: 200 };
     }
-    await done('Published on the site ✨', '✅ Approved — live on the site within a minute', [{ text: '🗑 Remove from site', callback_data: 'remove' }]);
-  } else if (q.data === 'remove') {
-    const list = await readApproved(env, true);
-    await deletePhoto(list.find((r) => r.id === review.id)?.photo, env);
-    await writeApproved(list.filter((r) => r.id !== review.id), env);
-    await done('Removed from the site', '🗑 Removed from the site', [{ text: '✅ Approve again', callback_data: 'approve' }]);
-  } else if (q.data === 'reject') {
+    if (q.data === 'remove') {
+      let photo = null;
+      await updateApproved(env, (list) => {
+        photo = list.find((r) => r.id === review.id)?.photo || photo;
+        return list.filter((r) => r.id !== review.id);
+      });
+      await deletePhoto(photo, env);
+      await done('Removed from the site', '🗑 Removed from the site', [{ text: '✅ Approve again', callback_data: 'approve' }]);
+      return { ok: true, status: 200 };
+    }
+  } catch (e) {
+    await tg('answerCallbackQuery', { callback_query_id: q.id, text: 'Busy for a moment, please tap again', show_alert: true }, env);
+    return { ok: true, status: 200 };
+  }
+  if (q.data === 'reject') {
     await done('Rejected', '❌ Rejected — not shown on the site', [{ text: '✅ Approve anyway', callback_data: 'approve' }]);
   }
   return { ok: true, status: 200 };

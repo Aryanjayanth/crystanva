@@ -1,7 +1,7 @@
 // Approved reviews live in one small JSON file in your Vercel Blob store ("crystanva-reviews").
 // On Vercel the store is connected via BLOB_STORE_ID (secure OIDC access, no key to manage);
 // an older-style BLOB_READ_WRITE_TOKEN also works.
-import { del, put } from '@vercel/blob';
+import { BlobPreconditionFailedError, del, get, put } from '@vercel/blob';
 
 const FILE = 'reviews.json';
 
@@ -38,6 +38,30 @@ export async function savePhoto(id, bytes, env) {
 
 export async function deletePhoto(url, env) {
   if (url) await del(url, auth(env)).catch(() => {});
+}
+
+// Safe change to the approved list: read it together with its version tag (etag), apply the change,
+// and save only if nobody changed it in between ("ifMatch"). If it changed — or the copy we read was
+// slightly out of date — read again and retry. This stops two quick taps from undoing each other.
+export async function updateApproved(env, change) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const r = await get(FILE, { access: 'public', ...auth(env) });
+    const list = r && r.statusCode === 200 ? JSON.parse((await new Response(r.stream).text()) || '[]') : [];
+    const next = change(Array.isArray(list) ? list : []);
+    try {
+      await put(FILE, JSON.stringify(next), {
+        access: 'public', addRandomSuffix: false, allowOverwrite: true,
+        contentType: 'application/json', cacheControlMaxAge: 60,
+        ...(r?.blob?.etag ? { ifMatch: r.blob.etag } : {}),
+        ...auth(env),
+      });
+      return next;
+    } catch (e) {
+      if (!(e instanceof BlobPreconditionFailedError)) throw e;
+      await new Promise((ok) => setTimeout(ok, 300 * (attempt + 1)));
+    }
+  }
+  throw new Error('Review list is busy, please tap again');
 }
 
 export async function writeApproved(list, env) {
