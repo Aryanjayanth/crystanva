@@ -1,7 +1,7 @@
 // POST /api/telegram — Telegram calls this when you tap a button under a review.
 // ✅ Approve → review goes live on the site · ❌ Reject → ignored · 🗑 Remove → taken off the site.
 import { chatIds, sendTelegramFile, tg, vercel } from './_telegram.js';
-import { storeReady, savePhoto, deletePhoto, updateApproved, patchOrder, readOrders } from './_store.js';
+import { storeReady, savePhoto, deletePhoto, updateApproved, patchOrder, readOrders, addOrder } from './_store.js';
 import { xlsx } from './_xlsx.js';
 
 // works for text reviews (entities) and photo reviews (caption_entities)
@@ -65,6 +65,34 @@ async function handleMessage(m, env) {
     return { ok: true, status: 200 };
   }
   if (['start', 'help'].includes(name)) { await say(HELP); return { ok: true, status: 200 }; }
+
+  // an old order message (from before numbering) forwarded to the bot: add it to the sheet
+  if (!cmd && text.includes('New Crystanva order') && !/order #\d+/.test(text)) {
+    if (!storeReady(env)) { await say('Order storage is not connected yet.'); return { ok: true, status: 200 }; }
+    const f = {}; const extra = [];
+    for (const line of text.split(String.fromCharCode(10))) {
+      const kv = line.replace(/^[—-]\s*/, '').match(/^([A-Za-z][A-Za-z0-9 -]{0,30}):\s*(.*)$/);
+      if (!kv) continue;
+      const key = kv[1].toLowerCase();
+      if (['name', 'phone', 'address', 'notes', 'quantity', 'total'].includes(key)) f[key] = kv[2].trim();
+      else if (key === 'item' || /^item \d+$/.test(key)) f.item = [f.item, kv[2].trim()].filter(Boolean).join(', ');
+      else extra.push(`${kv[1]}: ${kv[2].trim()}`);
+    }
+    if (!f.name || !f.phone) { await say('I could not read that order. Forward the full order message.'); return { ok: true, status: 200 }; }
+    const when0 = m.forward_date || m.forward_origin?.date || m.date;
+    const date = new Date((when0 || Date.now() / 1000) * 1000).toISOString();
+    try {
+      const same = (await readOrders(env)).find((o) => o.phone === f.phone && o.name === f.name && o.date === date);
+      if (same) { await say(`Already in the sheet as order #${same.no}.`); return { ok: true, status: 200 }; }
+      const saved = await addOrder(env, (no) => ({
+        no, date, name: f.name.slice(0, 120), phone: f.phone.slice(0, 40), item: (f.item || '').slice(0, 300),
+        qty: Number(f.quantity) || 1, total: Number((f.total || '').replace(/[^\d.]/g, '')) || 0, txn: '', paid: false, made: false,
+        details: extra.join('; ').slice(0, 1500), address: (f.address || '').slice(0, 400), notes: (f.notes || '').slice(0, 400),
+      }));
+      await say(`✅ Added to the sheet as order #${saved.no} (${f.name}).`);
+    } catch (e) { await say(`Could not add it: ${e.name} ${String(e.message).slice(0, 150)}`); }
+    return { ok: true, status: 200 };
+  }
 
   // "/paid 12", "/paid 12 UTR123", "/made 12" — or a plain reply to an order message (saves the transaction ID)
   let action = null; let no = null; let rest = '';
