@@ -13,25 +13,42 @@ export async function tg(method, payload, env) {
   return res.json().catch(() => ({ ok: false }));
 }
 
-// Send a photo (raw bytes) to your own chat, with an HTML caption and optional buttons.
+// Everyone who receives orders: TELEGRAM_CHAT_ID can hold one id, several ids separated by commas, or a group id.
+export const chatIds = (env) => String(env.TELEGRAM_CHAT_ID || '').split(/[\s,]+/).filter(Boolean);
+const NOT_READY = { ok: false, status: 500, error: 'Telegram is not configured yet.', unconfigured: true };
+const ready = (env) => env.TELEGRAM_BOT_TOKEN && chatIds(env).length;
+
+// Send a photo (raw bytes) to every chat, with an HTML caption and optional buttons.
 export async function sendTelegramPhoto(bytes, type, caption, env, extra = {}) {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return { ok: false, status: 500, error: 'Telegram is not configured yet.', unconfigured: true };
-  const form = new FormData();
-  form.append('chat_id', env.TELEGRAM_CHAT_ID);
-  form.append('photo', new Blob([bytes], { type }), 'review.jpg');
-  form.append('caption', caption);
-  form.append('parse_mode', 'HTML');
-  for (const [k, v] of Object.entries(extra)) form.append(k, typeof v === 'string' ? v : JSON.stringify(v));
-  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
-  const r = await res.json().catch(() => ({ ok: false }));
-  return r.ok ? { ok: true, status: 200 } : { ok: false, status: 502, error: 'Telegram rejected the photo.' };
+  if (!ready(env)) return NOT_READY;
+  const results = await Promise.all(chatIds(env).map(async (chat) => {
+    const form = new FormData();
+    form.append('chat_id', chat);
+    form.append('photo', new Blob([bytes], { type }), 'review.jpg');
+    form.append('caption', caption);
+    form.append('parse_mode', 'HTML');
+    for (const [k, v] of Object.entries(extra)) form.append(k, typeof v === 'string' ? v : JSON.stringify(v));
+    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
+    return (await res.json().catch(() => ({ ok: false }))).ok;
+  }));
+  return results.some(Boolean) ? { ok: true, status: 200 } : { ok: false, status: 502, error: 'Telegram rejected the photo.' };
 }
 
-// Send a message to your own chat (orders, reviews).
+// Send a file (e.g. the Excel sheet) to one chat.
+export async function sendTelegramFile(chat, bytes, filename, type, caption, env) {
+  const form = new FormData();
+  form.append('chat_id', String(chat));
+  form.append('document', new Blob([bytes], { type }), filename);
+  if (caption) form.append('caption', caption);
+  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendDocument`, { method: 'POST', body: form });
+  return res.json().catch(() => ({ ok: false }));
+}
+
+// Send a message to every chat (orders, reviews).
 export async function sendTelegram(text, env, extra = {}) {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return { ok: false, status: 500, error: 'Telegram is not configured yet.', unconfigured: true };
-  const r = await tg('sendMessage', { chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true, ...extra }, env);
-  return r.ok ? { ok: true, status: 200 } : { ok: false, status: 502, error: 'Telegram rejected the message.' };
+  if (!ready(env)) return NOT_READY;
+  const results = await Promise.all(chatIds(env).map((chat) => tg('sendMessage', { chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true, ...extra }, env)));
+  return results.some((r) => r.ok) ? { ok: true, status: 200 } : { ok: false, status: 502, error: 'Telegram rejected the message.' };
 }
 
 // Wraps handle(body, env, headers) → { ok, status, data?, error?, headers? } as a Vercel serverless handler.

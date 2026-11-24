@@ -53,3 +53,11 @@ so the home page doesn't have to run several 3D scenes at once. If you change a 
   so prices in Google stay in sync automatically.
 - To appear in Google faster: add the site in **Google Search Console** (search.google.com/search-console),
   verify it, and submit `https://crystanva.vercel.app/sitemap.xml`.
+
+## Order sheet (Excel) and friends on the bot
+- Every order gets a number (`#1`, `#2`, ...) and is logged in the Blob store.
+- In Telegram send **/sheet** to the bot: it replies with an Excel file (Order No, Name, Phone, Item, Price, Transaction ID, Date, Qty, Details, Address, Notes).
+- Transaction ID: **reply** to the order message with the ID, or send `/paid 12 UTR123456`.
+- Friends: they open the bot and send **/start** (or add the bot to a group and send /start there). It replies with the chat ID.
+  Put every ID in `TELEGRAM_CHAT_ID` separated by commas (e.g. `123456,-100987654`) in `.env` and in Vercel, then redeploy.
+  Everyone on the list gets the orders and reviews, and can use /sheet and /paid.
