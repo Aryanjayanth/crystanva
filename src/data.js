@@ -109,10 +109,10 @@ export const defaultItem = (categoryId, name = '') => {
     category: categoryId,
     kind: c.kind,
     value: c.kind === 'letter' ? initialOf(name) : c.kind === 'pair' ? 'pair' : c.kind === 'shape' ? 'circle' : c.kind === 'plate' ? 'hexagon' : c.kind,
-    ...(c.twoSided ? { back: { color: 'clear', glitter: 'silver-glitter', placement: 'top' } } : {}),
+    ...(c.twoSided ? { back: { color: 'clear', glitter: 'silver-glitter', placement: 'all' } } : {}),
     color: 'pink',
     glitter: 'gold-foil',
-    placement: 'top',
+    placement: 'all',
     floral: true,
   };
 };
