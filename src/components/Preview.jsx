@@ -182,6 +182,7 @@ function Tassel({ pos, uid, hex }) {
 export default function Preview({ kind = 'letter', value = 'J', color = 'pink', glitter = 'gold-foil', placement = 'top', float = true, className = '' }) {
   const uid = useId().replace(/:/g, '');
   const base = colors.find((c) => c.id === color)?.hex ?? '#ffffff';
+  const isClear = Boolean(colors.find((c) => c.id === color)?.clear);
   const g = glitters.find((x) => x.id === glitter);
   const [hole, setHole] = useState({ x: 200, y: 112 });
 
@@ -270,13 +271,13 @@ export default function Preview({ kind = 'letter', value = 'J', color = 'pink', 
           {/* thickness */}
           {layers.map((l, i) => (
             <g key={i} transform={`translate(${l.dx.toFixed(1)} ${l.dy.toFixed(1)})`}>
-              <rect x="-60" y="-100" width="520" height="520" fill={l.fill} mask={M} />
+              <rect x="-60" y="-100" width="520" height="520" fill={l.fill} mask={M} opacity={isClear ? 0.45 : 1} />
             </g>
           ))}
 
           {/* front face */}
           <g mask={M}>
-            <rect x="-60" y="-100" width="520" height="520" fill={base} />
+            <rect x="-60" y="-100" width="520" height="520" fill={base} opacity={isClear ? 0.35 : 1} />
             <rect x="-60" y="-100" width="520" height="520" fill={`url(#${uid}tint)`} />
             <GlitterLayer glitter={g} placement={placement} y0={y0} y1={y1} uid={uid} />
             {kind === 'pen' ? (

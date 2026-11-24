@@ -640,3 +640,14 @@ h1, h2, h3 { font-weight: 500; }
 .card-price { font-size: 14px; color: var(--muted); }
 .card-price b { font-family: var(--serif); font-size: 20px; color: var(--navy); font-weight: 600; }
 @media (max-width: 560px) { .card-price b { font-size: 17px; } .card-price { font-size: 12px; } }
+
+/* ---------- crystal clear swatch + floral step ---------- */
+.swatch i.clear {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(210, 232, 238, 0.35) 55%, rgba(255, 255, 255, 0.7)),
+    repeating-conic-gradient(#e4e6ea 0 25%, #ffffff 0 50%) 0 0 / 10px 10px;
+}
+.opt-note { margin: -4px 0 12px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.yesno { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.yn-icon { font-size: 22px; line-height: 1; color: var(--teal-2); }
+.placement.on .yn-icon { color: var(--purple); }

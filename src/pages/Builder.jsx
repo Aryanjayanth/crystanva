@@ -1,5 +1,5 @@
 import Resin from '../components/Resin.jsx';
-import { categories, colors, glitters, shapes, plates, placements, describe, priceOf } from '../data';
+import { categories, colors, glitters, shapes, plates, placements, describe, priceOf, FLORAL_PRICE } from '../data';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -61,7 +61,7 @@ export default function Builder({ item, setItem, next, back }) {
           <div className="swatches">
             {colors.map((c) => (
               <button key={c.id} disabled={!c.inStock} className={`swatch ${item.color === c.id ? 'on' : ''}`} onClick={() => set({ color: c.id })}>
-                <i style={{ background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,.55), transparent 60%), ${c.hex}` }} />
+                <i className={c.clear ? 'clear' : ''} style={c.clear ? undefined : { background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,.55), transparent 60%), ${c.hex}` }} />
                 <span>{c.name}{!c.inStock && <em> · sold out</em>}</span>
               </button>
             ))}
@@ -93,6 +93,19 @@ export default function Builder({ item, setItem, next, back }) {
             </div>
           </div>
         )}
+
+        <div className="opt">
+          <h4><span>{step++}</span> Floral add-on</h4>
+          <p className="opt-note">Real dried flowers set into your piece{FLORAL_PRICE ? ` (+₹${FLORAL_PRICE})` : ''}. We'll pick flowers that suit your colours.</p>
+          <div className="yesno">
+            {[[false, 'No flowers'], [true, 'Yes, add flowers']].map(([v, label]) => (
+              <button key={label} type="button" className={`placement ${Boolean(item.floral) === v ? 'on' : ''}`} onClick={() => set({ floral: v })}>
+                <span aria-hidden className="yn-icon">{v ? '❀' : '✕'}</span>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="builder-foot">
           <div>

@@ -7,7 +7,7 @@ import ReviewForm from '../components/ReviewForm.jsx';
 import { categories, colors, glitters, reviews, initialOf, fromPrice, lowestPrice } from '../data';
 
 const combos = [
-  ['pink', 'gold-foil'], ['white', 'rosegold-foil'], ['black', 'gold-glitter'],
+  ['pink', 'gold-foil'], ['white', 'rosegold-foil'], ['clear', 'gold-glitter'],
   ['peach', 'silver-foil'], ['pearl', 'purple-glitter'], ['champagne', 'teal-glitter'],
 ];
 

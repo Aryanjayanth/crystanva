@@ -1,0 +1,13 @@
+{
+  "name": "Crystanva — Made for you",
+  "short_name": "Crystanva",
+  "description": "Personalised handmade resin keychains, pens and coasters.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f6ec",
+  "theme_color": "#f6f6ec",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

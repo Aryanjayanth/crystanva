@@ -151,10 +151,10 @@ function getPiece(kind, value, font) {
   return pieceCache.get(key);
 }
 const flakeCache = new Map();
-function getFlakes(kind, value, piece, glitter, placement) {
+function getFlakes(kind, value, piece, glitter, placement, clear = false) {
   if (!glitter || glitter.kind === 'none') return null;
-  const key = `${kind}|${value}|${glitter.id}|${placement}`;
-  if (!flakeCache.has(key)) flakeCache.set(key, kind === 'pen' ? makePenFlakes(glitter, placement) : makeFlakes(piece, glitter, placement));
+  const key = `${kind}|${value}|${glitter.id}|${placement}|${clear}`;
+  if (!flakeCache.has(key)) flakeCache.set(key, kind === 'pen' ? makePenFlakes(glitter, placement, clear) : makeFlakes(piece, glitter, placement, clear));
   return flakeCache.get(key);
 }
 // warm the cache in idle time (e.g. the hero's next colour/glitter combos) so changes never stutter
@@ -166,7 +166,7 @@ export function prewarm(list) {
     const it = queue.shift();
     if (!it) return;
     const piece = it.kind === 'pen' ? null : getPiece(it.kind, it.value, moldFont);
-    getFlakes(it.kind, it.value, piece, glitters.find((g) => g.id === it.glitter), it.placement || 'top');
+    getFlakes(it.kind, it.value, piece, glitters.find((g) => g.id === it.glitter), it.placement || 'top', colors.find((c) => c.id === it.color)?.clear);
     idle(next);
   };
   idle(next);
@@ -218,7 +218,7 @@ function flakeData(points, glitter, r) {
   return { matrices, cols, count: points.length, foil, id: `${glitter.id}-${points.length}-${r()}` };
 }
 
-function makeFlakes(piece, glitter, placement) {
+function makeFlakes(piece, glitter, placement, clear) {
   if (!piece || !glitter || glitter.kind === 'none') return null;
   const r = rng(hashStr(glitter.id + placement));
   const N = glitter.kind === 'foil' ? 320 : IS_SMALL ? 1300 : 2200;
@@ -231,13 +231,14 @@ function makeFlakes(piece, glitter, placement) {
     const x = bbox.minX + r() * (bbox.maxX - bbox.minX), y = bbox.minY + t * (bbox.maxY - bbox.minY);
     if (!inside(v.set(x, y), contours)) continue;
     if (hole && Math.hypot(x - hole.x, y - hole.y) < hole.r + 0.035) continue;
-    pts.push({ x, y, z: (z0 + r() * (z1 - z0)) * (r() < 0.55 ? 1 : -1) });
+    // coloured resin: glitter sits in the clear layer over the colour; clear resin: all the way through
+    pts.push({ x, y, z: clear ? (r() * 2 - 1) * z1 : (z0 + r() * (z1 - z0)) * (r() < 0.55 ? 1 : -1) });
   }
   return flakeData(pts, glitter, r);
 }
 
 const PEN = { core: 0.12, shell: 0.15, len: 1.2 };
-function makePenFlakes(glitter, placement) {
+function makePenFlakes(glitter, placement, clear) {
   if (!glitter || glitter.kind === 'none') return null;
   const r = rng(hashStr('pen' + glitter.id + placement));
   const N = glitter.kind === 'foil' ? 240 : IS_SMALL ? 1000 : 1600;
@@ -245,7 +246,7 @@ function makePenFlakes(glitter, placement) {
   for (let tries = 0; pts.length < N && tries < N * 2; tries++) {
     const t = r() < 0.03 ? r() : sampleT(r(), placement);
     const y = (t - 0.5) * (PEN.len - 0.06);
-    const a = r() * Math.PI * 2, rad = PEN.core + 0.006 + r() * (PEN.shell - PEN.core - 0.014);
+    const a = r() * Math.PI * 2, rad = clear ? 0.02 + Math.sqrt(r()) * (PEN.shell - 0.036) : PEN.core + 0.006 + r() * (PEN.shell - PEN.core - 0.014);
     pts.push({ x: Math.cos(a) * rad, y, z: Math.sin(a) * rad, rot: -a + Math.PI / 2 });
   }
   return flakeData(pts, glitter, r);
@@ -253,7 +254,11 @@ function makePenFlakes(glitter, placement) {
 
 function Flakes({ data }) {
   const ref = useRef();
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ metalness: 1, roughness: 0.22, side: THREE.DoubleSide, envMapIntensity: 1.8 }), []);
+  // phones render tiny flakes at low resolution, where pure mirror-metal averages out dark —
+  // a softer, partly-diffuse metal keeps the glitter as light and golden as on a computer
+  const mat = useMemo(() => new THREE.MeshStandardMaterial(LITE
+    ? { metalness: 0.55, roughness: 0.32, side: THREE.DoubleSide, envMapIntensity: 2.3 }
+    : { metalness: 1, roughness: 0.22, side: THREE.DoubleSide, envMapIntensity: 1.8 }), []);
   useLayoutEffect(() => {
     if (!data || !ref.current) return;
     const m = ref.current;
@@ -262,12 +267,12 @@ function Flakes({ data }) {
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [data]);
   if (!data || !data.count) return null;
-  mat.roughness = data.foil ? 0.3 : 0.2;
+  mat.roughness = LITE ? (data.foil ? 0.36 : 0.32) : data.foil ? 0.3 : 0.2;
   return <instancedMesh key={data.id} ref={ref} args={[data.foil ? FOIL_GEO : HEX_GEO, mat, data.count]} />;
 }
 
 /* ---------- materials ---------- */
-function useMaterials(base) {
+function useMaterials(base, clear = false) {
   const m = useMemo(() => ({
     shell: LITE
       ? new THREE.MeshPhysicalMaterial({ color: '#ffffff', transparent: true, opacity: 0.22, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.5, depthWrite: false })
@@ -282,6 +287,8 @@ function useMaterials(base) {
       color: '#ffffff', transmission: 1, thickness: 0.04, roughness: 0.04, ior: 1.2,
       clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.1,
     }),
+    // Crystal Clear: truly see-through glossy resin (refraction would turn it milky against the light page)
+    clearShell: new THREE.MeshPhysicalMaterial({ color: '#f2fbfb', transparent: true, opacity: 0.16, roughness: 0.02, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, specularIntensity: 1, envMapIntensity: 1.8, depthWrite: false }),
     core: new THREE.MeshPhysicalMaterial({ roughness: 0.32, clearcoat: 0.4, envMapIntensity: 0.9 }),
     metal: new THREE.MeshStandardMaterial({ color: '#e8ebef', metalness: 1, roughness: 0.12, envMapIntensity: 1.4 }),
     gold: new THREE.MeshStandardMaterial({ color: '#d9b25a', metalness: 1, roughness: 0.18, envMapIntensity: 1.3 }),
@@ -292,7 +299,9 @@ function useMaterials(base) {
     m.core.color.set(base);
     const lum = m.core.color.getHSL({}).l;
     m.core.roughness = lum < 0.2 ? 0.18 : 0.32; // dark resin reads glossier
-  }, [base, m]);
+    // phones (no refraction pass): make clear resin a touch more visible so the piece doesn't vanish
+    m.clearShell.opacity = LITE ? 0.3 : 0.26;
+  }, [base, clear, m]);
   useEffect(() => () => Object.values(m).forEach((x) => x.dispose()), [m]);
   return m;
 }
@@ -372,11 +381,13 @@ function Tassel({ piece, mat, hex }) {
 
 /* ---------- the piece ---------- */
 function Piece({ kind, value, color, glitter, placement, font, still }) {
-  const base = colors.find((c) => c.id === color)?.hex ?? '#ffffff';
+  const col = colors.find((c) => c.id === color);
+  const base = col?.hex ?? '#ffffff';
+  const clear = Boolean(col?.clear);
   const g = glitters.find((x) => x.id === glitter);
-  const mat = useMaterials(base);
+  const mat = useMaterials(base, clear);
   const piece = useMemo(() => (kind === 'pen' ? null : getPiece(kind, value, font)), [kind, value, font]);
-  const flakes = useMemo(() => getFlakes(kind, value, piece, g, placement), [kind, value, piece, g, placement]);
+  const flakes = useMemo(() => getFlakes(kind, value, piece, g, placement, clear), [kind, value, piece, g, placement, clear]);
 
   const group = useRef();
   const pop = useRef(0);
@@ -404,9 +415,9 @@ function Piece({ kind, value, color, glitter, placement, font, still }) {
     return (
       <group ref={group}>
         <group rotation={[0, 0, -0.62]} scale={1.3}>
-          <mesh material={mat.core}><cylinderGeometry args={[PEN.core, PEN.core, PEN.len - 0.02, 48]} /></mesh>
+          {!clear && <mesh material={mat.core}><cylinderGeometry args={[PEN.core, PEN.core, PEN.len - 0.02, 48]} /></mesh>}
           <Flakes data={flakes} />
-          <mesh material={mat.penShell}><cylinderGeometry args={[PEN.shell, PEN.shell, PEN.len, 64]} /></mesh>
+          <mesh material={clear ? mat.clearShell : mat.penShell}><cylinderGeometry args={[PEN.shell, PEN.shell, PEN.len, 64]} /></mesh>
           <mesh position={[0, -half - 0.02, 0]} material={mat.gold}><cylinderGeometry args={[0.153, 0.153, 0.05, 48]} /></mesh>
           <mesh position={[0, -half - 0.17, 0]} material={mat.metal}><cylinderGeometry args={[0.15, 0.065, 0.26, 48]} /></mesh>
           <mesh position={[0, -half - 0.34, 0]} material={mat.nib}><cylinderGeometry args={[0.065, 0.004, 0.09, 24]} /></mesh>
@@ -422,9 +433,9 @@ function Piece({ kind, value, color, glitter, placement, font, still }) {
     <group ref={group}>
       {/* coasters / platters are shown lying back a little so you see the poured surface */}
       <group rotation={[kind === 'plate' ? -0.75 : 0, 0, 0]}>
-        <mesh geometry={piece.core} material={mat.core} />
+        {!clear && <mesh geometry={piece.core} material={mat.core} />}
         <Flakes data={flakes} />
-        <mesh geometry={piece.shell} material={mat.shell} />
+        <mesh geometry={piece.shell} material={clear ? mat.clearShell : mat.shell} />
         {piece.hole && (kind === 'bookmark'
           ? <Tassel piece={piece} mat={mat} hex={g && g.kind !== 'none' ? g.hex : '#c9a45c'} />
           : <KeyRing piece={piece} mat={mat} />)}

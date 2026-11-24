@@ -45,3 +45,11 @@ so the home page doesn't have to run several 3D scenes at once. If you change a 
 1. `npm run dev`
 2. Open http://localhost:5173/#render and wait until it says **done** (about 3 seconds per image).
 3. Reload the site. Anything without an image falls back to a lighter drawing automatically.
+
+## SEO
+- Page title, description, share preview (WhatsApp/Instagram/X) and icons are in `index.html`;
+  the share image is `public/og-image.jpg`.
+- Structured data (store + products with prices) and `sitemap.xml` are generated at build time from `src/data.js`,
+  so prices in Google stay in sync automatically.
+- To appear in Google faster: add the site in **Google Search Console** (search.google.com/search-console),
+  verify it, and submit `https://crystanva.vercel.app/sitemap.xml`.

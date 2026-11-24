@@ -6,10 +6,12 @@
 // ─────────────────────────────────────────────────────────────
 // default price (₹) for anything without its own price
 export const PRICE = 149;
+// extra charge (₹) when the customer adds dried flowers (floral add-on)
+export const FLORAL_PRICE = 0;
 
 export const colors = [
   { id: 'white', name: 'Snow White', hex: '#F4F3EF', inStock: true },
-  { id: 'black', name: 'Midnight Black', hex: '#1B1B20', inStock: true },
+  { id: 'clear', name: 'Crystal Clear', hex: '#EEF3F5', clear: true, inStock: true }, // no colour: see-through resin
   { id: 'peach', name: 'Peach Coral', hex: '#F28C70', inStock: true },
   { id: 'pink', name: 'Blush Pink', hex: '#F4A6C5', inStock: true },
   { id: 'champagne', name: 'Champagne', hex: '#E5D5BA', inStock: true },
@@ -65,7 +67,7 @@ export const categories = [
     tag: 'Most loved',
     kind: 'letter',
     price: 149,
-    sample: { value: 'M', color: 'black', glitter: 'gold-glitter' },
+    sample: { value: 'M', color: 'clear', glitter: 'gold-glitter' },
   },
   {
     id: 'shapes',
@@ -81,7 +83,7 @@ export const categories = [
     blurb: 'Write with a little sparkle.',
     kind: 'pen',
     price: 149,
-    sample: { value: 'pen', color: 'black', glitter: 'gold-glitter' },
+    sample: { value: 'pen', color: 'clear', glitter: 'gold-glitter' },
   },
   {
     id: 'plates',
@@ -108,6 +110,7 @@ export const defaultItem = (categoryId, name = '') => {
     color: 'pink',
     glitter: 'gold-foil',
     placement: 'top',
+    floral: false,
   };
 };
 
@@ -122,7 +125,8 @@ export const placements = [
 export const priceOf = (item) => {
   const own = item.kind === 'plate' ? plates.find((p) => p.id === item.value)?.price
     : item.kind === 'shape' ? shapes.find((p) => p.id === item.value)?.price : undefined;
-  return own ?? categories.find((c) => c.id === item.category)?.price ?? PRICE;
+  const base = own ?? categories.find((c) => c.id === item.category)?.price ?? PRICE;
+  return base + (item.floral ? FLORAL_PRICE : 0);
 };
 // lowest price in a collection (for "from ₹…" on the cards)
 export const fromPrice = (c) => {
@@ -142,6 +146,7 @@ export const describe = (item) => {
   details.push({ label: 'Colour', value: col?.name });
   details.push({ label: 'Glitter', value: gl?.name });
   if (gl && gl.kind !== 'none') details.push({ label: 'Glitter style', value: placements.find((p) => p.id === (item.placement || 'top'))?.name });
+  details.push({ label: 'Floral add-on', value: item.floral ? 'Yes — dried flowers' : 'No' });
   return { title: c.title, details };
 };
 
