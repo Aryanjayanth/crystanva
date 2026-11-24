@@ -28,7 +28,7 @@ async function sendSheet(chat, env) {
 }
 
 const HELP = ['Crystanva orders', '',
-  '/sheet — Excel sheet of all orders',
+  '/getall — get all orders at once (Excel sheet, same as /sheet)',
   '/paid 12 — mark order #12 as paid (add a transaction ID after it if you want: /paid 12 UTR123)',
   '/made 12 — mark order #12 as made',
   '/unpaid 12 and /unmade 12 — undo',
@@ -59,7 +59,7 @@ async function handleMessage(m, env) {
   const cmd = text.match(/^\/(\w+)(?:@\w+)?\s*([\s\S]*)$/);
   const name = cmd ? cmd[1].toLowerCase() : '';
 
-  if (['sheet', 'orders', 'excel'].includes(name)) {
+  if (['getall', 'sheet', 'orders', 'excel', 'all', 'allorders', 'getallorders'].includes(name)) {
     if (!storeReady(env)) await say('Order storage is not connected yet.');
     else { try { await sendSheet(chat, env); } catch (e) { await say(`Could not make the sheet: ${e.name} ${String(e.message).slice(0, 200)}`); } }
     return { ok: true, status: 200 };
