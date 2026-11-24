@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────
 //  Everything you might want to edit lives in this file.
-//  • PRICE        – price of one item (₹)
+//  • price        – set on each collection below (and optionally per shape/plate)
 //  • inStock      – set to false and the option shows as "sold out"
 //  • reviews      – approved customer reviews (empty until you add real ones)
 // ─────────────────────────────────────────────────────────────
+// default price (₹) for anything without its own price
 export const PRICE = 149;
 
 export const colors = [
@@ -63,6 +64,7 @@ export const categories = [
     blurb: 'Pick your letter, your colour, your sparkle.',
     tag: 'Most loved',
     kind: 'letter',
+    price: 149,
     sample: { value: 'M', color: 'black', glitter: 'gold-glitter' },
   },
   {
@@ -70,6 +72,7 @@ export const categories = [
     title: 'Shaped Keychains',
     blurb: 'Stars, drops, diamonds and more.',
     kind: 'shape',
+    price: 149,
     sample: { value: 'star', color: 'white', glitter: 'rosegold-foil' },
   },
   {
@@ -77,6 +80,7 @@ export const categories = [
     title: 'Resin Pens',
     blurb: 'Write with a little sparkle.',
     kind: 'pen',
+    price: 149,
     sample: { value: 'pen', color: 'black', glitter: 'gold-glitter' },
   },
   {
@@ -84,6 +88,7 @@ export const categories = [
     title: 'Coasters & Platters',
     blurb: 'Hexagon coasters and heart platters for your table.',
     kind: 'plate',
+    price: 149,
     sample: { value: 'hexagon', color: 'white', glitter: 'gold-foil' },
   },
 ];
@@ -111,6 +116,20 @@ export const placements = [
   { id: 'all', name: 'All over' },
   { id: 'bottom', name: 'Fade from bottom' },
 ];
+
+// Price of one piece: a shape/plate's own price if it has one, else its collection's price.
+// e.g. give the Heart Platter its own price:  { id: 'heart', name: 'Heart Platter', price: 299, ... }
+export const priceOf = (item) => {
+  const own = item.kind === 'plate' ? plates.find((p) => p.id === item.value)?.price
+    : item.kind === 'shape' ? shapes.find((p) => p.id === item.value)?.price : undefined;
+  return own ?? categories.find((c) => c.id === item.category)?.price ?? PRICE;
+};
+// lowest price in a collection (for "from ₹…" on the cards)
+export const fromPrice = (c) => {
+  const opts = c.kind === 'plate' ? plates : c.kind === 'shape' ? shapes : [];
+  return Math.min(c.price ?? PRICE, ...opts.map((o) => o.price ?? c.price ?? PRICE));
+};
+export const lowestPrice = () => Math.min(...categories.map(fromPrice));
 
 export const describe = (item) => {
   const c = categories.find((x) => x.id === item.category);

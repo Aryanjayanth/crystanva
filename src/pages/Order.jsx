@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Resin from '../components/Resin.jsx';
-import { describe, PRICE } from '../data';
+import { describe, priceOf } from '../data';
 
 export default function Order({ item, name, setName, back, onSent }) {
   const [form, setForm] = useState({ phone: '', address: '', notes: '' });
@@ -8,7 +8,7 @@ export default function Order({ item, name, setName, back, onSent }) {
   const [status, setStatus] = useState('idle'); // idle | sending | error
   const [errors, setErrors] = useState({});
   const { title, details } = describe(item);
-  const total = PRICE * qty;
+  const total = priceOf(item) * qty;
 
   const validate = () => {
     const e = {};

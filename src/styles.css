@@ -634,3 +634,9 @@ h1, h2, h3 { font-weight: 500; }
 .photo-picked { display: flex; align-items: center; gap: 14px; }
 .photo-picked img { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--gold-soft), var(--shadow); }
 .photo-picked .btn { padding: 10px 16px; font-size: 13.5px; }
+
+/* ---------- prices on cards ---------- */
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.card-price { font-size: 14px; color: var(--muted); }
+.card-price b { font-family: var(--serif); font-size: 20px; color: var(--navy); font-weight: 600; }
+@media (max-width: 560px) { .card-price b { font-size: 17px; } .card-price { font-size: 12px; } }

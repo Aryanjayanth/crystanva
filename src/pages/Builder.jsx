@@ -1,5 +1,5 @@
 import Resin from '../components/Resin.jsx';
-import { categories, colors, glitters, shapes, plates, placements, describe, PRICE } from '../data';
+import { categories, colors, glitters, shapes, plates, placements, describe, priceOf } from '../data';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -97,7 +97,7 @@ export default function Builder({ item, setItem, next, back }) {
         <div className="builder-foot">
           <div>
             <small>Price</small>
-            <strong>₹{PRICE}</strong>
+            <strong>₹{priceOf(item)}</strong>
           </div>
           <button className="btn primary" onClick={next}>Continue <span aria-hidden>→</span></button>
         </div>

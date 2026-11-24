@@ -4,7 +4,7 @@ import ItemImage from '../components/ItemImage.jsx';
 import Facets from '../components/Facets.jsx';
 import Resin from '../components/Resin.jsx';
 import ReviewForm from '../components/ReviewForm.jsx';
-import { categories, colors, glitters, reviews, PRICE, initialOf } from '../data';
+import { categories, colors, glitters, reviews, initialOf, fromPrice, lowestPrice } from '../data';
 
 const combos = [
   ['pink', 'gold-foil'], ['white', 'rosegold-foil'], ['black', 'gold-glitter'],
@@ -83,7 +83,7 @@ function Collections({ start }) {
       <div className="section-head">
         <span className="eyebrow">Collections</span>
         <h2>Pick something to make yours</h2>
-        <p>Every piece starts at <b>₹{PRICE}</b> and is customised by you.</p>
+        <p>Every piece starts at <b>₹{lowestPrice()}</b> and is customised by you.</p>
       </div>
       <div className="cards">
         {categories.map((c, idx) => (
@@ -101,7 +101,10 @@ function Collections({ start }) {
             <div className="card-art"><ItemImage kind={c.kind} {...c.sample} /></div>
             <h3>{c.title}</h3>
             <p>{c.blurb}</p>
-            <span className="card-cta">Customise <span aria-hidden>→</span></span>
+            <span className="card-foot">
+              <span className="card-price">from <b>₹{fromPrice(c)}</b></span>
+              <span className="card-cta">Customise <span aria-hidden>→</span></span>
+            </span>
           </motion.button>
         ))}
       </div>
