@@ -1,7 +1,7 @@
 // POST /api/telegram — Telegram calls this when you tap a button under a review.
 // ✅ Approve → review goes live on the site · ❌ Reject → ignored · 🗑 Remove → taken off the site.
 import { chatIds, sendTelegramFile, tg, vercel } from './_telegram.js';
-import { storeReady, savePhoto, deletePhoto, updateApproved, patchOrder, readOrders, addOrder } from './_store.js';
+import { storeReady, savePhoto, deletePhoto, updateApproved, patchOrder, readOrders, addOrder, resetOrders } from './_store.js';
 import { xlsx } from './_xlsx.js';
 
 // works for text reviews (entities) and photo reviews (caption_entities)
@@ -62,6 +62,13 @@ async function handleMessage(m, env) {
   if (['sheet', 'orders', 'excel'].includes(name)) {
     if (!storeReady(env)) await say('Order storage is not connected yet.');
     else { try { await sendSheet(chat, env); } catch (e) { await say(`Could not make the sheet: ${e.name} ${String(e.message).slice(0, 200)}`); } }
+    return { ok: true, status: 200 };
+  }
+  if (name === 'reset') {
+    // wipes the whole order list and restarts numbering at #1 — owner's chat only, needs a confirmation word
+    if (chat !== chatIds(env)[0]) await say('Only the shop owner can reset the orders.');
+    else if (cmd[2].trim().toLowerCase() !== 'confirm') await say('This deletes ALL orders from the sheet and restarts numbering at #1. It cannot be undone. Send /reset confirm to do it.');
+    else { try { const n = await resetOrders(env); await say(`🧹 Order list cleared (${n} orders removed). The next order will be #1.`); } catch (e) { await say(`Could not reset: ${e.name} ${String(e.message).slice(0, 150)}`); } }
     return { ok: true, status: 200 };
   }
   if (['start', 'help'].includes(name)) { await say(HELP); return { ok: true, status: 200 }; }

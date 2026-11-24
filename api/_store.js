@@ -143,3 +143,11 @@ export async function writeApproved(list, env) {
     ...auth(env),
   });
 }
+
+// delete every order (owner's /reset): the per-order files and the older single file
+export async function resetOrders(env) {
+  const blobs = await orderBlobs(env);
+  if (blobs.length) await del(blobs.map((b) => b.url), auth(env));
+  await del(publicUrl(env, `orders-${hash(env)}.json`), auth(env)).catch(() => {});
+  return blobs.length;
+}
