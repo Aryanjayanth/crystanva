@@ -48,8 +48,6 @@ export const shapes = [
   { id: 'rectangle', name: 'Rectangle', price: 99, d: 'M125 30 H275 Q300 30 300 55 V345 Q300 370 275 370 H125 Q100 370 100 345 V55 Q100 30 125 30 Z', hole: [200, 72], inStock: true },
   { id: 'halfmoon', name: 'Half Moon', price: 49, d: 'M302 60 A150 150 0 1 0 302 340 A160 160 0 0 1 302 60 Z', hole: [168, 112], inStock: true },
   { id: 'diamond', name: 'Diamond', price: 49, d: 'M200 38 L342 200 L200 362 L58 200 Z', hole: [200, 112], inStock: true },
-  // special: only in the two-sided Special Keychains collection
-  { id: 'heart', name: 'Heart', price: 199, special: true, d: 'M200 350 C60 250 38 150 88 104 C135 62 192 84 200 130 C208 84 265 62 312 104 C362 150 340 250 200 350 Z', hole: [132, 126], inStock: true },
 ];
 
 // Big moulds: coasters & platters (no keyring)
@@ -74,12 +72,12 @@ export const categories = [
   {
     id: 'special',
     title: 'Special Keychains',
-    blurb: 'A heart you design on both sides — front and back.',
-    tag: 'Both sides',
-    kind: 'shape',
+    blurb: 'A pair of keychains that join to make a heart — design each one.',
+    tag: 'For two',
+    kind: 'pair',
     twoSided: true,
-    price: 199,
-    sample: { value: 'heart', color: 'pink', glitter: 'gold-foil', back: { color: 'clear', glitter: 'silver-glitter', placement: 'top' } },
+    price: 199, // for the pair
+    sample: { value: 'pair', color: 'pink', glitter: 'gold-foil', back: { color: 'clear', glitter: 'silver-glitter', placement: 'top' } },
   },
   {
     id: 'shapes',
@@ -110,7 +108,7 @@ export const defaultItem = (categoryId, name = '') => {
   return {
     category: categoryId,
     kind: c.kind,
-    value: c.kind === 'letter' ? initialOf(name) : c.twoSided ? 'heart' : c.kind === 'shape' ? 'circle' : c.kind === 'plate' ? 'hexagon' : c.kind,
+    value: c.kind === 'letter' ? initialOf(name) : c.kind === 'pair' ? 'pair' : c.kind === 'shape' ? 'circle' : c.kind === 'plate' ? 'hexagon' : c.kind,
     ...(c.twoSided ? { back: { color: 'clear', glitter: 'silver-glitter', placement: 'top' } } : {}),
     color: 'pink',
     glitter: 'gold-foil',
@@ -155,8 +153,8 @@ export const describe = (item) => {
     if (lg && lg.kind !== 'none') details.push({ label: `${label}Glitter style`, value: placements.find((p) => p.id === (look.placement || 'top'))?.name });
   };
   if (item.back) {
-    side('Front · ', item);
-    side('Back · ', item.back);
+    side(item.kind === 'pair' ? 'Keychain 1 · ' : 'Front · ', item);
+    side(item.kind === 'pair' ? 'Keychain 2 · ' : 'Back · ', item.back);
   } else {
     side('', item);
   }

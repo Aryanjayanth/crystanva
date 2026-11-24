@@ -179,7 +179,50 @@ function Tassel({ pos, uid, hex }) {
 }
 
 /* ---------- the resin piece ---------- */
-export default function Preview({ kind = 'letter', value = 'J', color = 'pink', glitter = 'gold-foil', placement = 'top', float = true, className = '' }) {
+/* ---------- Special Keychains: two tags whose cut-outs form a heart (light 2D version) ---------- */
+const HEART_D = 'M200 350 C60 250 38 150 88 104 C135 62 192 84 200 130 C208 84 265 62 312 104 C362 150 340 250 200 350 Z';
+function PairPreview({ color = 'pink', glitter = 'gold-foil', back, float = true, className = '' }) {
+  const uid = useId().replace(/:/g, '');
+  const b = back || { color: 'clear', glitter: 'silver-glitter' };
+  const tag = (c, g, x0, seed) => {
+    const col = colors.find((k) => k.id === c), gl = glitters.find((k) => k.id === g);
+    const r = rng(hashStr(seed + g));
+    const dots = gl && gl.kind !== 'none' ? Array.from({ length: 70 }, () => ({ x: x0 + r() * 140, y: 95 + Math.pow(r(), 1.8) * 230, s: 1.5 + r() * (gl.kind === 'foil' ? 6 : 3) })) : [];
+    return (
+      <g>
+        <rect x={x0} y="90" width="140" height="240" rx="16" fill={col?.hex ?? '#fff'} opacity={col?.clear ? 0.35 : 1} />
+        {dots.map((d, i) => <circle key={i} cx={d.x} cy={d.y} r={d.s} fill={gl.hex} opacity="0.85" />)}
+        <rect x={x0} y="90" width="140" height="240" rx="16" fill="none" stroke="#fff" strokeOpacity=".7" strokeWidth="3" />
+      </g>
+    );
+  };
+  return (
+    <div className={`pv ${float ? 'pv-float' : ''} ${className}`}>
+      <svg viewBox="-60 -100 520 520" role="img" aria-label="pair of keychains that form a heart">
+        <defs>
+          <mask id={`${uid}hm`} maskUnits="userSpaceOnUse" x="-60" y="-100" width="520" height="520">
+            <rect x="-60" y="-100" width="520" height="520" fill="#fff" />
+            <path d={HEART_D} transform="translate(200 212) scale(0.34) translate(-200 -206)" fill="#000" />
+            <circle cx="80" cy="112" r="9" fill="#000" /><circle cx="320" cy="112" r="9" fill="#000" />
+          </mask>
+        </defs>
+        <ellipse cx="200" cy="372" rx="150" ry="10" fill="#1a2a55" opacity=".15" />
+        <circle cx="80" cy="84" r="24" fill="none" stroke="#c9ced6" strokeWidth="5" />
+        <circle cx="320" cy="84" r="24" fill="none" stroke="#c9ced6" strokeWidth="5" />
+        <g mask={`url(#${uid}hm)`}>
+          {tag(color, glitter, 56, 'L')}
+          {tag(b.color, b.glitter, 204, 'R')}
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+export default function Preview(props) {
+  return props.kind === 'pair' ? <PairPreview {...props} /> : <SinglePreview {...props} />;
+}
+
+function SinglePreview({ kind = 'letter', value = 'J', color = 'pink', glitter = 'gold-foil', placement = 'top', float = true, className = '' }) {
   const uid = useId().replace(/:/g, '');
   const base = colors.find((c) => c.id === color)?.hex ?? '#ffffff';
   const isClear = Boolean(colors.find((c) => c.id === color)?.clear);

@@ -63,7 +63,7 @@ function devApi(env) {
 
 // SEO at build time: structured data (store + products with current prices from src/data.js) and sitemap.xml
 const SITE = 'https://crystanva.vercel.app';
-const CARD_IMAGES = { personal: 'letter_M_clear_gold-glitter_top', special: 'shape_heart_pink_gold-foil_top', shapes: 'shape_halfmoon_pink_gold-foil_top', pens: 'pen_pen_clear_gold-glitter_top' };
+const CARD_IMAGES = { personal: 'letter_M_clear_gold-glitter_top', special: 'pair_pair_pink_gold-foil_top', shapes: 'shape_halfmoon_pink_gold-foil_top', pens: 'pen_pen_clear_gold-glitter_top' };
 function seo() {
   const today = new Date().toISOString().slice(0, 10);
   const jsonLd = {

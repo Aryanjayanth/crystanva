@@ -21,6 +21,9 @@ export default function Builder({ item, setItem, next, back }) {
   const twoSided = Boolean(cat.twoSided && item.back);
   const look = twoSided && side === 'back' ? item.back : item;
   const setLook = (patch) => (twoSided && side === 'back' ? set({ back: { ...item.back, ...patch } }) : set(patch));
+  // pair = two keychains (Keychain 1 / 2); otherwise one piece with a front and back
+  const names = item.kind === 'pair' ? ['Keychain 1', 'Keychain 2'] : ['Front', 'Back'];
+  const sideName = side === 'back' ? names[1] : names[0];
 
   return (
     <section className="builder">
@@ -29,7 +32,7 @@ export default function Builder({ item, setItem, next, back }) {
         <div className="stage">
           <Resin kind={item.kind} value={item.value} color={item.color} glitter={item.glitter} placement={item.placement} back={twoSided ? item.back : undefined} showBack={twoSided && side === 'back'} />
         </div>
-        <p className="stage-caption">{twoSided ? `Showing the ${side} · tap Front / Back to switch` : details.map((d) => d.value).join(' · ')}</p>
+        <p className="stage-caption">{twoSided ? (item.kind === 'pair' ? `Designing ${sideName} · they join to make a heart` : `Showing the ${side} · tap Front / Back to switch`) : details.map((d) => d.value).join(' · ')}</p>
         <p className="stage-hint">Drag to turn it in the light</p>
       </div>
 
@@ -65,11 +68,11 @@ export default function Builder({ item, setItem, next, back }) {
 
         {twoSided && (
           <div className="opt">
-            <h4><span>{step++}</span> Pick a side to design</h4>
+            <h4><span>{step++}</span> {item.kind === 'pair' ? 'Pick a keychain to design' : 'Pick a side to design'}</h4>
             <div className="sides">
               {['front', 'back'].map((sd) => (
                 <button key={sd} type="button" className={`side-tab ${side === sd ? 'on' : ''}`} onClick={() => setSide(sd)}>
-                  <b>{sd === 'front' ? 'Front' : 'Back'}</b>
+                  <b>{sd === 'front' ? names[0] : names[1]}</b>
                   <small>{colors.find((c) => c.id === (sd === 'front' ? item : item.back).color)?.name} · {glitters.find((g) => g.id === (sd === 'front' ? item : item.back).glitter)?.name}</small>
                 </button>
               ))}
@@ -78,7 +81,7 @@ export default function Builder({ item, setItem, next, back }) {
         )}
 
         <div className="opt">
-          <h4><span>{step++}</span> {twoSided ? `${side === 'front' ? 'Front' : 'Back'} colour` : 'Base colour'}</h4>
+          <h4><span>{step++}</span> {twoSided ? `${sideName} colour` : 'Base colour'}</h4>
           <div className="swatches">
             {colors.map((c) => (
               <button key={c.id} disabled={!c.inStock} className={`swatch ${look.color === c.id ? 'on' : ''}`} onClick={() => setLook({ color: c.id })}>
@@ -90,7 +93,7 @@ export default function Builder({ item, setItem, next, back }) {
         </div>
 
         <div className="opt">
-          <h4><span>{step++}</span> {twoSided ? `${side === 'front' ? 'Front' : 'Back'} glitter & foil` : 'Glitter & foil'}</h4>
+          <h4><span>{step++}</span> {twoSided ? `${sideName} glitter & foil` : 'Glitter & foil'}</h4>
           <div className="swatches">
             {glitters.map((g) => (
               <button key={g.id} disabled={!g.inStock} className={`swatch ${look.glitter === g.id ? 'on' : ''}`} onClick={() => setLook({ glitter: g.id })}>

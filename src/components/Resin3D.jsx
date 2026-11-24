@@ -126,6 +126,11 @@ function buildPiece(kind, value, font) {
     if (hole) break;
   }
 
+  return extrudeContours(contours, bbox, hole, dims);
+}
+
+// outline(s) + keyring hole → the 3D resin body (clear shell with bevel, coloured core)
+function extrudeContours(contours, bbox, hole, dims) {
   const three = contours.map((c) => {
     const sh = new THREE.Shape(c.outer);
     c.holes.forEach((h) => sh.holes.push(new THREE.Path(h)));
@@ -145,11 +150,39 @@ function buildPiece(kind, value, font) {
   return { shell, core, coreHalf, contours, bbox, hole, dims };
 }
 
+/* ---------- Special Keychains: a pair of tags that join to form a heart ---------- */
+// Two rounded rectangles side by side; each has half a heart cut into its inner edge,
+// so when they touch, the cut-outs make a heart. Seam is at x = 0.
+const PAIR = { w: 0.6, h: 1.05, rad: 0.08, k: 0.0165, cy: 0.0 };
+const heartAt = (t) => {
+  const x = 16 * Math.sin(t) ** 3;
+  const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+  return new V2(x * PAIR.k, (y + 2.5) * PAIR.k + PAIR.cy);
+};
+function buildPairHalf(side) {
+  const { w, h, rad } = PAIR;
+  // right-hand tag, counter-clockwise: seam bottom → outer edge → seam top → down to the heart → around it → bottom
+  const pts = [new V2(0, -h / 2), new V2(w - rad, -h / 2)];
+  const corner = (cx, cy, a0) => { for (let i = 1; i < 6; i++) { const a = a0 + (i / 6) * (Math.PI / 2); pts.push(new V2(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad)); } };
+  corner(w - rad, -h / 2 + rad, -Math.PI / 2);
+  pts.push(new V2(w, -h / 2 + rad), new V2(w, h / 2 - rad));
+  corner(w - rad, h / 2 - rad, 0);
+  pts.push(new V2(w - rad, h / 2), new V2(0, h / 2));
+  for (let i = 0; i <= 40; i++) pts.push(heartAt((i / 40) * Math.PI)); // right half of the heart: dip → lobe → tip
+  let outer = pts;
+  if (side === 'left') outer = pts.map((p) => new V2(-p.x, p.y)).reverse(); // mirror, keep counter-clockwise
+  const bb = boxOf(outer);
+  const contours = [{ outer, holes: [], bb }];
+  const r = DIMS.thick.r, m = 0.05;
+  const hole = { x: (side === 'left' ? -1 : 1) * (w - 0.17), y: h / 2 - r - m, r, m };
+  return extrudeContours(contours, bb, hole, DIMS.thick);
+}
+
 // Built pieces and glitter are cached, so switching back to a letter/colour is instant.
 const pieceCache = new Map();
 function getPiece(kind, value, font) {
   const key = `${kind}|${value}`;
-  if (!pieceCache.has(key)) pieceCache.set(key, buildPiece(kind, value, font));
+  if (!pieceCache.has(key)) pieceCache.set(key, kind === 'pair' ? buildPairHalf(value) : buildPiece(kind, value, font));
   return pieceCache.get(key);
 }
 const flakeCache = new Map();
@@ -470,6 +503,62 @@ function Piece({ kind, value, color, glitter, placement, back, showBack, font, s
   );
 }
 
+/* Special Keychains: two tags that slide together so their cut-outs form a heart.
+   Keychain 1 uses color/glitter/placement, keychain 2 uses `back`. */
+function PairPiece({ color, glitter, placement = 'top', back, showBack, still }) {
+  const b = back || { color: 'clear', glitter: 'silver-glitter', placement: 'top' };
+  const col1 = colors.find((c) => c.id === color), col2 = colors.find((c) => c.id === b.color);
+  const g1 = glitters.find((x) => x.id === glitter), g2 = glitters.find((x) => x.id === b.glitter);
+  const clear1 = Boolean(col1?.clear), clear2 = Boolean(col2?.clear);
+  const mat = useMaterials(col1?.hex ?? '#ffffff', clear1 || clear2);
+  const core2 = useMemo(() => new THREE.MeshPhysicalMaterial({ roughness: 0.32, clearcoat: 0.4, envMapIntensity: 0.9 }), []);
+  useEffect(() => { if (col2) core2.color.set(col2.hex); }, [col2, core2]);
+  useEffect(() => () => core2.dispose(), [core2]);
+  const L = useMemo(() => getPiece('pair', 'left'), []);
+  const R = useMemo(() => getPiece('pair', 'right'), []);
+  const f1 = useMemo(() => getFlakes('pair', 'left', L, g1, placement, clear1), [L, g1, placement, clear1]);
+  const f2 = useMemo(() => getFlakes('pair', 'right', R, g2, b.placement || 'top', clear2), [R, g2, b.placement, clear2]);
+
+  const group = useRef(), gl = useRef(), gr = useRef();
+  const { invalidate } = useThree();
+  useLayoutEffect(() => {
+    if (!still) return;
+    group.current.rotation.set(0, -0.22, 0);
+    gl.current.position.set(-0.05, 0, 0);
+    gr.current.position.set(0.05, 0, 0);
+    invalidate();
+  }, [still, f1, f2, invalidate]);
+  useFrame((state, dt) => {
+    if (still) return;
+    const t = state.clock.elapsedTime;
+    const sep = 0.015 + 0.17 * (0.5 + 0.5 * Math.cos(t * 0.9)); // apart ↔ together: the heart forms
+    gl.current.position.x = -sep;
+    gr.current.position.x = sep;
+    const k = Math.min(1, dt * 6); // the keychain being designed comes forward a little
+    gl.current.position.z += ((showBack ? 0 : 0.08) - gl.current.position.z) * k;
+    gr.current.position.z += ((showBack ? 0.08 : 0) - gr.current.position.z) * k;
+    group.current.rotation.y = Math.sin(t * 0.5) * 0.3;
+    group.current.rotation.x = Math.sin(t * 0.35) * 0.04;
+  });
+
+  const tag = (P, coreMat, flakes, clear) => (
+    <>
+      {!clear && <mesh geometry={P.core} material={coreMat} />}
+      <Flakes data={flakes} />
+      <mesh geometry={P.shell} material={clear ? mat.clearShell : mat.shell} />
+      <KeyRing piece={P} mat={mat} />
+    </>
+  );
+  return (
+    <group scale={1.25} position={[0, 0.1, 0]}>
+      <group ref={group}>
+        <group ref={gl}>{tag(L, mat.core, f1, clear1)}</group>
+        <group ref={gr}>{tag(R, core2, f2, clear2)}</group>
+      </group>
+    </group>
+  );
+}
+
 function Env() {
   const { gl, scene, invalidate } = useThree();
   useEffect(() => {
@@ -531,7 +620,9 @@ export default function Resin3D({ kind = 'letter', value = 'J', color = 'pink', 
         <directionalLight position={[3, 4, 5]} intensity={1.5} />
         <directionalLight position={[-4, 1.5, -3]} intensity={0.6} />
         <group position={[0, lift, 0]}>
-          <Piece kind={kind} value={value} color={color} glitter={glitter} placement={placement} back={back} showBack={showBack} font={font} still={still} />
+          {kind === 'pair'
+            ? <PairPiece color={color} glitter={glitter} placement={placement} back={back} showBack={showBack} still={still} />
+            : <Piece kind={kind} value={value} color={color} glitter={glitter} placement={placement} back={back} showBack={showBack} font={font} still={still} />}
         </group>
         <Shadow />
         {interactive && <OrbitControls enablePan={false} enableZoom={false} enableDamping minPolarAngle={Math.PI / 2 - 0.45} maxPolarAngle={Math.PI / 2 + 0.25} />}
