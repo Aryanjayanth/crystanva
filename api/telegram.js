@@ -1,7 +1,7 @@
 // POST /api/telegram — Telegram calls this when you tap a button under a review.
 // ✅ Approve → review goes live on the site · ❌ Reject → ignored · 🗑 Remove → taken off the site.
 import { chatIds, sendTelegramFile, tg, vercel } from './_telegram.js';
-import { storeReady, savePhoto, deletePhoto, updateApproved, updateOrders, readOrders } from './_store.js';
+import { storeReady, savePhoto, deletePhoto, updateApproved, patchOrder, readOrders } from './_store.js';
 import { xlsx } from './_xlsx.js';
 
 // works for text reviews (entities) and photo reviews (caption_entities)
@@ -79,7 +79,7 @@ async function handleMessage(m, env) {
   if (!storeReady(env)) { await say('Order storage is not connected yet.'); return { ok: true, status: 200 }; }
   let found = false;
   try {
-    await updateOrders(env, (list) => list.map((o) => { if (o.no === no) { found = true; return ACTIONS[action](o, rest); } return o; }));
+    found = await patchOrder(env, no, (o) => ACTIONS[action](o, rest));
   } catch (e) { await say(`Could not save: ${e.name} ${String(e.message).slice(0, 150)}`); return { ok: true, status: 200 }; }
   await say(found ? `✅ Order #${no} ${DONE[action]}${action === 'paid' && rest ? ` · transaction ID ${rest.slice(0, 80)}` : ''}` : `Order #${no} was not found.`);
   return { ok: true, status: 200 };

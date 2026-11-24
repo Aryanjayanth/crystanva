@@ -1,6 +1,6 @@
 // POST /api/order — forwards a new order to your Telegram and logs it for the Excel sheet.
 import { esc, sendTelegram, vercel } from './_telegram.js';
-import { storeReady, updateOrders } from './_store.js';
+import { storeReady, addOrder } from './_store.js';
 
 export async function handle(order, env) {
   if (!order?.name || !order?.phone) return { ok: false, status: 400, error: 'Name and phone are required.' };
@@ -14,15 +14,17 @@ export async function handle(order, env) {
   let logErr = '';
   if (storeReady(env)) {
     try {
-      await updateOrders(env, (list) => {
-        no = list.reduce((m, o) => Math.max(m, o.no || 0), 0) + 1;
-        return [...list, {
-          no, date: new Date().toISOString(), name: String(order.name).slice(0, 120), phone: String(order.phone).slice(0, 40),
-          item: items.map((i) => `${i.category} x${Number(i.quantity) || 1}`).join(', ').slice(0, 300), qty, total, txn: '',
+      // never wait long: the Telegram message below must always go out, even if the log is slow
+      const saved = await Promise.race([
+        addOrder(env, (n) => ({
+          no: n, date: new Date().toISOString(), name: String(order.name).slice(0, 120), phone: String(order.phone).slice(0, 40),
+          item: items.map((i) => `${i.category} x${Number(i.quantity) || 1}`).join(', ').slice(0, 300), qty, total, txn: '', paid: false, made: false,
           details: items.map((i) => (i.details || []).map((d) => `${d.label}: ${d.value}`).join('; ')).join(' | ').slice(0, 1500),
           address: String(order.address || '').slice(0, 400), notes: String(order.notes || '').slice(0, 400),
-        }];
-      });
+        })),
+        new Promise((_, no) => setTimeout(() => no(new Error('timed out')), 5000)),
+      ]);
+      no = saved.no;
     } catch (e) { no = null; logErr = `${e.name}: ${String(e.message).slice(0, 120)}`; console.error('order log failed', e); } // never lose an order because the log was busy
   }
 
