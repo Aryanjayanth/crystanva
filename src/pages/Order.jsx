@@ -14,6 +14,7 @@ export default function Order({ item, name, setName, back, onSent }) {
     const e = {};
     if (name.trim().length < 2) e.name = 'Please tell us your name.';
     if (!/^[6-9]\d{9}$/.test(form.phone.replace(/\D/g, '').slice(-10)) || form.phone.replace(/\D/g, '').length < 10) e.phone = 'Enter a valid 10-digit mobile number.';
+    if (form.address.trim().length < 3) e.address = 'Please add your address or "I\'ll pick it up".';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -67,15 +68,16 @@ export default function Order({ item, name, setName, back, onSent }) {
         <form className="order-form" onSubmit={submit} noValidate>
           <span className="eyebrow">Almost there</span>
           <h1>Where should we reach you?</h1>
-          <p className="muted">No payment now. We'll message you to confirm your piece before we start pouring.</p>
+          <p className="muted">Delivery charges are added at the time of payment. We'll message you to confirm your piece before we start pouring.</p>
+          <p className="req-note"><b className="star">*</b> Required</p>
 
           <label className={`field ${errors.name ? 'bad' : ''}`}>
-            <span>Your name</span>
+            <span>Your name <b className="star">*</b></span>
             <input value={name} onChange={(e) => setName(e.target.value.slice(0, 40))} placeholder="e.g. Jaya" autoComplete="name" />
             {errors.name && <small>{errors.name}</small>}
           </label>
-          {field('phone', 'Phone number', { type: 'tel', inputMode: 'numeric', placeholder: '10-digit mobile number', autoComplete: 'tel' })}
-          {field('address', 'Delivery address or pickup spot (optional)', { placeholder: 'Area, city — or "I’ll pick it up"' })}
+          {field('phone', <>Phone number <b className="star">*</b></>, { type: 'tel', inputMode: 'numeric', placeholder: '10-digit mobile number', autoComplete: 'tel' })}
+          {field('address', <>Delivery address or pickup spot <b className="star">*</b></>, { placeholder: 'Area, city — or "I’ll pick it up"' })}
           {field('notes', 'Anything else? (optional)', { textarea: true, placeholder: 'Gift wrap, a second letter, a different idea…' })}
 
           {status === 'error' && <p className="form-error">Couldn't send your request. Please check your connection and try again.</p>}

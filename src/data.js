@@ -10,8 +10,8 @@ export const PRICE = 149;
 export const FLORAL_PRICE = 0;
 
 export const colors = [
-  { id: 'white', name: 'Snow White', hex: '#F4F3EF', inStock: true },
   { id: 'clear', name: 'Crystal Clear', hex: '#EEF3F5', clear: true, inStock: true }, // no colour: see-through resin
+  { id: 'white', name: 'Snow White', hex: '#F4F3EF', inStock: true },
   { id: 'peach', name: 'Peach Coral', hex: '#F28C70', inStock: true },
   { id: 'pink', name: 'Blush Pink', hex: '#F4A6C5', inStock: true },
   { id: 'champagne', name: 'Champagne', hex: '#E5D5BA', inStock: true },
@@ -113,7 +113,7 @@ export const defaultItem = (categoryId, name = '') => {
     color: 'pink',
     glitter: 'gold-foil',
     placement: 'top',
-    floral: false,
+    floral: true,
   };
 };
 
