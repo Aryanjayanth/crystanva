@@ -43,11 +43,12 @@ function starPath(cx, cy, R, r) {
 
 // Small keychain shapes (from the little shapes mold)
 export const shapes = [
-  { id: 'circle', name: 'Circle', d: 'M200 50 A150 150 0 1 1 199.9 50 Z', hole: [200, 92], inStock: true },
-  { id: 'square', name: 'Square', d: 'M90 60 H310 Q340 60 340 90 V310 Q340 340 310 340 H90 Q60 340 60 310 V90 Q60 60 90 60 Z', hole: [200, 102], inStock: true },
-  { id: 'star', name: 'Star', d: starPath(200, 205, 165, 72), hole: [200, 112], inStock: true },
-  { id: 'diamond', name: 'Diamond', d: 'M200 38 L342 200 L200 362 L58 200 Z', hole: [200, 112], inStock: true },
-  { id: 'drop', name: 'Teardrop', d: 'M200 40 C272 140 332 200 332 255 C332 325 272 362 200 362 C128 362 68 325 68 255 C68 200 128 140 200 40 Z', hole: [200, 118], inStock: true },
+  { id: 'circle', name: 'Circle', price: 89, d: 'M200 50 A150 150 0 1 1 199.9 50 Z', hole: [200, 92], inStock: true },
+  { id: 'square', name: 'Square', price: 89, d: 'M90 60 H310 Q340 60 340 90 V310 Q340 340 310 340 H90 Q60 340 60 310 V90 Q60 60 90 60 Z', hole: [200, 102], inStock: true },
+  { id: 'rectangle', name: 'Rectangle', price: 99, d: 'M125 30 H275 Q300 30 300 55 V345 Q300 370 275 370 H125 Q100 370 100 345 V55 Q100 30 125 30 Z', hole: [200, 72], inStock: true },
+  { id: 'halfmoon', name: 'Half Moon', price: 49, d: 'M302 60 A150 150 0 1 0 302 340 A160 160 0 0 1 302 60 Z', hole: [168, 112], inStock: true },
+  { id: 'diamond', name: 'Diamond', price: 49, d: 'M200 38 L342 200 L200 362 L58 200 Z', hole: [200, 112], inStock: true },
+  { id: 'heart', name: 'Heart (Special)', price: 149, d: 'M200 350 C60 250 38 150 88 104 C135 62 192 84 200 130 C208 84 265 62 312 104 C362 150 340 250 200 350 Z', hole: [132, 126], inStock: true },
 ];
 
 // Big moulds: coasters & platters (no keyring)
@@ -66,16 +67,16 @@ export const categories = [
     blurb: 'Pick your letter, your colour, your sparkle.',
     tag: 'Most loved',
     kind: 'letter',
-    price: 149,
+    price: 119,
     sample: { value: 'M', color: 'clear', glitter: 'gold-glitter' },
   },
   {
     id: 'shapes',
     title: 'Shaped Keychains',
-    blurb: 'Stars, drops, diamonds and more.',
+    blurb: 'Hearts, half moons, diamonds and more.',
     kind: 'shape',
-    price: 149,
-    sample: { value: 'star', color: 'white', glitter: 'rosegold-foil' },
+    price: 89,
+    sample: { value: 'heart', color: 'white', glitter: 'rosegold-foil' },
   },
   {
     id: 'pens',
@@ -106,7 +107,7 @@ export const defaultItem = (categoryId, name = '') => {
   return {
     category: categoryId,
     kind: c.kind,
-    value: c.kind === 'letter' ? initialOf(name) : c.kind === 'shape' ? 'star' : c.kind === 'plate' ? 'hexagon' : c.kind,
+    value: c.kind === 'letter' ? initialOf(name) : c.kind === 'shape' ? 'heart' : c.kind === 'plate' ? 'hexagon' : c.kind,
     color: 'pink',
     glitter: 'gold-foil',
     placement: 'top',

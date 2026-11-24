@@ -651,3 +651,5 @@ h1, h2, h3 { font-weight: 500; }
 .yesno { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .yn-icon { font-size: 22px; line-height: 1; color: var(--teal-2); }
 .placement.on .yn-icon { color: var(--purple); }
+.shape-price { font-size: 12px; font-weight: 700; color: var(--teal-2); margin-top: -2px; }
+.shape.on .shape-price { color: var(--purple); }

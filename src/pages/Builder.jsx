@@ -50,6 +50,7 @@ export default function Builder({ item, setItem, next, back }) {
                 <button key={s.id} disabled={!s.inStock} className={`shape ${item.value === s.id ? 'on' : ''}`} onClick={() => set({ value: s.id })}>
                   <svg viewBox="0 0 400 400"><path d={s.d} /></svg>
                   <span>{s.name}</span>
+                  <small className="shape-price">₹{priceOf({ ...item, value: s.id, floral: false })}</small>
                 </button>
               ))}
             </div>
