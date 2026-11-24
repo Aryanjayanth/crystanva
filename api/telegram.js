@@ -78,7 +78,7 @@ async function handleMessage(m, env) {
     if (!storeReady(env)) { await say('Order storage is not connected yet.'); return { ok: true, status: 200 }; }
     const f = {}; const extra = [];
     for (const line of text.split(String.fromCharCode(10))) {
-      const kv = line.replace(/^[—-]\s*/, '').match(/^([A-Za-z][A-Za-z0-9 -]{0,30}):\s*(.*)$/);
+      const kv = line.replace(/^[—-]\s*/, '').match(/^([^:]{1,40}):\s*(.*)$/);
       if (!kv) continue;
       const key = kv[1].toLowerCase();
       if (['name', 'phone', 'address', 'notes', 'quantity', 'total'].includes(key)) f[key] = kv[2].trim();
