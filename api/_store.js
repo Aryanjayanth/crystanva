@@ -45,7 +45,7 @@ export async function deletePhoto(url, env) {
 // and save only if nobody changed it in between ("ifMatch"). If it changed — or the copy we read was
 // slightly out of date — read again and retry. This stops two quick taps from undoing each other.
 async function update(file, env, change) {
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     const r = await get(file, { access: 'public', ...auth(env) });
     const list = r && r.statusCode === 200 ? JSON.parse((await new Response(r.stream).text()) || '[]') : [];
     const next = change(Array.isArray(list) ? list : []);
@@ -72,12 +72,9 @@ export const updateApproved = (env, change) => update(FILE, env, change);
 // Orders log (feeds the Excel sheet). The file name includes a hash of the bot token so the link can't be guessed.
 const ordersFile = (env) => `orders-${createHash('sha256').update(env.TELEGRAM_BOT_TOKEN || '').digest('hex').slice(0, 24)}.json`;
 export const updateOrders = (env, change) => update(ordersFile(env), env, change);
-export async function readOrders(env) {
-  const r = await get(ordersFile(env), { access: 'public', ...auth(env) });
-  if (!r || r.statusCode !== 200) return [];
-  const list = JSON.parse((await new Response(r.stream).text()) || '[]');
-  return Array.isArray(list) ? list : [];
-}
+// A plain read can be a minute out of date (CDN cache). Saving the list back unchanged only succeeds against
+// the newest version, so this always returns the latest orders.
+export const readOrders = (env) => updateOrders(env, (list) => list);
 
 export async function writeApproved(list, env) {
   await put(FILE, JSON.stringify(list), {

@@ -11,7 +11,7 @@ const sparkleBg = (hex) =>
    radial-gradient(circle at 36% 72%, rgba(0,0,0,.14) 0 2.4px, transparent 3.4px),
    radial-gradient(circle at 50% 45%, rgba(255,255,255,.35), transparent 70%), ${hex}`;
 
-export default function Builder({ item, setItem, next, back }) {
+export default function Builder({ item, setItem, onAdd, onBuy, back }) {
   const cat = categories.find((c) => c.id === item.category);
   const set = (patch) => setItem({ ...item, ...patch });
   const { details } = describe(item);
@@ -136,7 +136,10 @@ export default function Builder({ item, setItem, next, back }) {
             <small>Price</small>
             <strong>₹{priceOf(item)}</strong>
           </div>
-          <button className="btn primary" onClick={next}>Continue <span aria-hidden>→</span></button>
+          <div className="foot-btns">
+            <button className="btn ghost" onClick={onAdd}>Add to cart</button>
+            <button className="btn primary" onClick={onBuy}>Buy now</button>
+          </div>
         </div>
       </div>
     </section>

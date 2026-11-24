@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import Resin from '../components/Resin.jsx';
+import ItemImage from '../components/ItemImage.jsx';
 import { describe, priceOf } from '../data';
 
-export default function Order({ item, name, setName, back, onSent }) {
+export default function Order({ lines: first, name, setName, back, onSent }) {
+  const [lines, setLines] = useState(first);
   const [form, setForm] = useState({ phone: '', address: '', notes: '' });
-  const [qty, setQty] = useState(1);
   const [status, setStatus] = useState('idle'); // idle | sending | error
   const [errors, setErrors] = useState({});
-  const { title, details } = describe(item);
-  const total = priceOf(item) * qty;
+  const total = lines.reduce((s, l) => s + priceOf(l.item) * l.qty, 0);
+  const count = lines.reduce((s, l) => s + l.qty, 0);
+  const setQty = (i, qty) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, qty: Math.max(1, Math.min(20, qty)) } : l)));
 
   const validate = () => {
     const e = {};
@@ -24,13 +25,14 @@ export default function Order({ item, name, setName, back, onSent }) {
     if (!validate()) return;
     setStatus('sending');
     try {
+      const items = lines.map((l) => ({ category: describe(l.item).title, details: describe(l.item).details, quantity: l.qty, total: priceOf(l.item) * l.qty }));
       const res = await fetch('/api/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: title, details, quantity: qty, total, name: name.trim(), phone: form.phone.trim(), address: form.address.trim(), notes: form.notes.trim() }),
+        body: JSON.stringify({ items, total, name: name.trim(), phone: form.phone.trim(), address: form.address.trim(), notes: form.notes.trim() }),
       });
       if (!res.ok) throw new Error();
-      onSent({ name: name.trim(), phone: form.phone.trim(), item, qty, total });
+      onSent({ name: name.trim(), phone: form.phone.trim(), item: lines[0].item, qty: count, total });
     } catch {
       setStatus('error');
     }
@@ -48,20 +50,27 @@ export default function Order({ item, name, setName, back, onSent }) {
 
   return (
     <section className="order">
-      <button className="back" onClick={back}>← Edit design</button>
+      <button className="back" onClick={back}>← Back</button>
       <div className="order-grid">
         <aside className="summary">
-          <div className="summary-art"><Resin kind={item.kind} value={item.value} color={item.color} glitter={item.glitter} placement={item.placement} back={item.back} still interactive={false} /></div>
-          <h3>{title}</h3>
-          <ul>{details.map((d) => <li key={d.label}><span>{d.label}</span><b>{d.value}</b></li>)}</ul>
-          <div className="qty">
-            <span>Quantity</span>
-            <div>
-              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Less">−</button>
-              <b>{qty}</b>
-              <button type="button" onClick={() => setQty((q) => Math.min(20, q + 1))} aria-label="More">+</button>
-            </div>
-          </div>
+          {lines.map((l, i) => {
+            const { title, details } = describe(l.item);
+            return (
+              <div className="sum-line" key={i}>
+                <div className="summary-art"><ItemImage kind={l.item.kind} value={l.item.value} color={l.item.color} glitter={l.item.glitter} placement={l.item.placement} back={l.item.back} /></div>
+                <h3>{title}</h3>
+                <ul>{details.map((d) => <li key={d.label}><span>{d.label}</span><b>{d.value}</b></li>)}</ul>
+                <div className="qty">
+                  <span>Quantity</span>
+                  <div>
+                    <button type="button" onClick={() => setQty(i, l.qty - 1)} aria-label="Less">−</button>
+                    <b>{l.qty}</b>
+                    <button type="button" onClick={() => setQty(i, l.qty + 1)} aria-label="More">+</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
           <div className="total"><span>Total</span><b>₹{total}</b></div>
         </aside>
 

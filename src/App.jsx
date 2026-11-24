@@ -7,6 +7,7 @@ import Home from './pages/Home.jsx';
 import Builder from './pages/Builder.jsx';
 import Order from './pages/Order.jsx';
 import Done from './pages/Done.jsx';
+import Cart from './pages/Cart.jsx';
 import { defaultItem } from './data';
 import { preload3D } from './components/Resin.jsx';
 
@@ -22,6 +23,12 @@ export default function App() {
   const [name, setName] = useState(() => localStorage.getItem('crystanva-name') || '');
 
   useEffect(() => { localStorage.setItem('crystanva-name', name); }, [name]);
+
+  // cart (kept on this device) and the pieces being checked out
+  const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem('crystanva-cart') || '[]'); } catch { return []; } });
+  useEffect(() => { localStorage.setItem('crystanva-cart', JSON.stringify(cart)); }, [cart]);
+  const [lines, setLines] = useState([]);
+  const [fromCart, setFromCart] = useState(false);
 
   const go = useCallback((next, { scrollTo } = {}) => {
     window.history.pushState({ page: next }, '');
@@ -40,8 +47,12 @@ export default function App() {
   // personalized keychains start with the first letter of the visitor's name
   const start = (categoryId) => { setItem(defaultItem(categoryId, name)); go('builder'); };
 
-  // guard: builder / order need an item
-  const view = (page === 'builder' || page === 'order') && !item ? 'home' : page;
+  const addToCart = () => { setCart((c) => [...c, { id: `${Date.now()}${c.length}`, item, qty: 1 }]); go('cart'); };
+  const buyNow = () => { setLines([{ item, qty: 1 }]); setFromCart(false); go('order'); };
+  const checkout = () => { setLines(cart.map(({ item: it, qty }) => ({ item: it, qty }))); setFromCart(true); go('order'); };
+
+  // guard: builder needs an item, order needs pieces
+  const view = (page === 'builder' && !item) || (page === 'order' && !lines.length) ? 'home' : page;
 
   if (import.meta.env.DEV && window.location.hash === '#render') {
     return <Suspense fallback={null}><RenderStudio /></Suspense>;
@@ -50,13 +61,14 @@ export default function App() {
   return (
     <>
       <AnimatePresence>{splash && <Splash onDone={() => setSplash(false)} />}</AnimatePresence>
-      <Navbar page={view} go={go} />
+      <Navbar page={view} go={go} cartCount={cart.reduce((s, l) => s + l.qty, 0)} />
       <main>
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.25, ease: 'easeOut' }}>
             {view === 'home' && <Home name={name} setName={setName} start={start} />}
-            {view === 'builder' && <Builder item={item} setItem={setItem} next={() => go('order')} back={() => window.history.back()} />}
-            {view === 'order' && <Order item={item} name={name} setName={setName} back={() => window.history.back()} onSent={(d) => { setDone(d); go('done'); }} />}
+            {view === 'builder' && <Builder item={item} setItem={setItem} onAdd={addToCart} onBuy={buyNow} back={() => window.history.back()} />}
+            {view === 'cart' && <Cart cart={cart} setCart={setCart} addMore={() => go('home', { scrollTo: 'collections' })} checkout={checkout} />}
+            {view === 'order' && <Order lines={lines} name={name} setName={setName} back={() => window.history.back()} onSent={(d) => { if (fromCart) setCart([]); setDone(d); go('done'); }} />}
             {view === 'done' && <Done info={done} home={() => go('home')} />}
           </motion.div>
         </AnimatePresence>

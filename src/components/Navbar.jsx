@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export default function Navbar({ page, go }) {
+export default function Navbar({ page, go, cartCount = 0 }) {
   const onHome = page === 'home';
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [page]);
@@ -28,6 +28,10 @@ export default function Navbar({ page, go }) {
         <span>CRYSTANVA</span>
       </button>
       <nav>{links}</nav>
+      <button className="cart-btn" onClick={() => go('cart')} aria-label={`Cart, ${cartCount} items`}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.2a1.5 1.5 0 0 0 1.5-1.1L20 8H6.2" /><circle cx="9.5" cy="19.5" r="1.3" /><circle cx="17" cy="19.5" r="1.3" /></svg>
+        {cartCount > 0 && <b>{cartCount}</b>}
+      </button>
       {/* phones: menu button + drop-down sheet */}
       <button className={`menu-btn ${open ? 'open' : ''}`} onClick={() => setOpen((o) => !o)} aria-label="Menu" aria-expanded={open}>
         <span />
