@@ -14,7 +14,7 @@ export const colors = [
   { id: 'white', name: 'Snow White', hex: '#F4F3EF', inStock: true },
   { id: 'peach', name: 'Peach Coral', hex: '#F28C70', inStock: true },
   { id: 'pink', name: 'Blush Pink', hex: '#F4A6C5', inStock: true },
-  { id: 'champagne', name: 'Champagne', hex: '#E5D5BA', inStock: true },
+  { id: 'champagne', name: 'Gold', hex: '#D4AF52', inStock: true },
   { id: 'pearl', name: 'Silver Pearl', hex: '#D9DBE3', inStock: true },
 ];
 
